@@ -116,54 +116,73 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
         analyzerExecutable = path.join(__dirname, 'venv311', 'bin', 'python3');
     }
 
-    // Process sequentially (could be optimized or parallelized later)
+    // Spawn the persistent analyzer daemon exactly ONCE
+    let processArgs;
+    if (app.isPackaged) {
+        processArgs = [];
+    } else {
+        processArgs = ['analyzer.py'];
+    }
+
+    const child = spawn(analyzerExecutable, processArgs);
+
     let current = 0;
+    let stdoutBuffer = "";
 
     function processNext() {
         if (current >= total) {
+            // Tell the python daemon to shutdown cleanly
+            try {
+                child.stdin.write("exit\n");
+            } catch (e) {
+                // Ignore if it's already dead
+            }
             event.sender.send('process:update', { type: 'done' });
             return;
         }
 
         const file = files[current];
-        current++;
         const filePath = path.join(targetPath, file);
 
-        let processArgs;
-        if (app.isPackaged) {
-            processArgs = [filePath, blurThreshold.toString()];
-        } else {
-            processArgs = ['analyzer.py', filePath, blurThreshold.toString()];
-        }
+        // Send the payload to the Python standard input
+        const payload = JSON.stringify({ file: filePath, threshold: blurThreshold });
+        child.stdin.write(payload + "\n");
+    }
 
-        const child = spawn(analyzerExecutable, processArgs);
+    child.stdout.on('data', (data) => {
+        stdoutBuffer += data.toString();
 
-        let stdoutData = '';
-        let stderrData = '';
+        // Python might print "READY\n" or actual JSON results "\n"
+        const lines = stdoutBuffer.split('\n');
 
-        child.stdout.on('data', (data) => {
-            stdoutData += data.toString();
-        });
+        // Keep the last incomplete line in the buffer
+        stdoutBuffer = lines.pop();
 
-        child.stderr.on('data', (data) => {
-            stderrData += data.toString();
-        });
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
 
-        child.on('close', (code) => {
-            let result;
-            try {
-                // Parse the last line as JSON
-                const lines = stdoutData.trim().split('\n');
-                const jsonStr = lines[lines.length - 1];
-                result = JSON.parse(jsonStr);
-            } catch (error) {
-                console.error(`处理文件失败: ${filePath}`);
-                console.error('STDOUT:', stdoutData);
-                console.error('STDERR:', stderrData);
-                result = { keep: false, reason: "分析器输出无法解析或崩溃" };
+            if (trimmed === "READY") {
+                // Engine is booted and loaded into memory, start processing
+                processNext();
+                continue;
             }
 
-            const keep = result.keep === true;
+            // Must be JSON result for the current file
+            const file = files[current];
+            const filePath = path.join(targetPath, file);
+            let keep = false;
+            let reason = "";
+
+            try {
+                const result = JSON.parse(trimmed);
+                keep = result.keep === true;
+                reason = result.reason || "";
+            } catch (err) {
+                console.error("Failed to parse JSON from Python:", trimmed);
+                keep = false;
+                reason = "分析器输出异常或解析失败";
+            }
 
             if (keep) {
                 const destPath = path.join(goodDir, file);
@@ -171,35 +190,45 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
                     fs.copyFileSync(filePath, destPath);
                 } catch (err) {
                     console.error(`复制文件失败: ${file}`, err);
-                    result.reason += ' (复制文件时出现写入错误)';
+                    reason += ' (复制文件出错)';
                 }
             }
+
+            // Advance the current pointer
+            current++;
 
             event.sender.send('process:update', {
                 type: 'progress',
                 current,
                 fileName: file,
                 keep: keep,
-                reason: result.reason || ''
+                reason: reason
             });
 
-            // Process next file after current completes
+            // Trigger the next one
             processNext();
-        });
+        }
+    });
 
-        child.on('error', (err) => {
-            console.error('Failed to start analyzer process:', err);
+    child.stderr.on('data', (data) => {
+        console.error("ANALYZER ERROR:", data.toString());
+    });
+
+    child.on('error', (err) => {
+        console.error('Failed to start analyzer process:', err);
+        event.sender.send('process:update', {
+            type: 'error',
+            message: "无法启动分析引擎"
+        });
+    });
+
+    child.on('close', (code) => {
+        // Only error if we didn't finish processing
+        if (current < total) {
             event.sender.send('process:update', {
-                type: 'progress',
-                current,
-                fileName: file,
-                keep: false,
-                reason: "无法启动分析引擎"
+                type: 'error',
+                message: `分析引擎异常退出 (代码 ${code})`
             });
-            processNext();
-        });
-    }
-
-    // Start processing queue
-    processNext();
+        }
+    });
 });

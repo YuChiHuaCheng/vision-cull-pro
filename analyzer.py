@@ -19,7 +19,7 @@ def calculate_ear(eye_points):
     ear = (A + B) / (2.0 * C)
     return ear
 
-def process_image(img_path, blur_threshold):
+def process_image(img_path, blur_threshold, face_mesh):
     # Read the image
     img = cv2.imread(img_path)
     if img is None:
@@ -35,27 +35,20 @@ def process_image(img_path, blur_threshold):
     # Blink/Eye-closed Detection
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
-    mp_face_mesh = mp.solutions.face_mesh
-    with mp_face_mesh.FaceMesh(
-        static_image_mode=True,
-        max_num_faces=3,
-        refine_landmarks=True,
-        min_detection_confidence=0.5) as face_mesh:
-        
-        results = face_mesh.process(img_rgb)
-        
-        if not results.multi_face_landmarks:
-            # If no faces are found, we don't consider it closed-eye. Keep it (already passed blur).
-            return {"keep": True, "reason": "未检测到人脸，清晰度合格"}
+    results = face_mesh.process(img_rgb)
+    
+    if not results.multi_face_landmarks:
+        # If no faces are found, we don't consider it closed-eye. Keep it (already passed blur).
+        return {"keep": True, "reason": "未检测到人脸，清晰度合格"}
 
-        # Define landmark indices for left and right eyes (MediaPipe standard)
-        LEFT_EYE = [362, 385, 387, 263, 373, 380]
-        RIGHT_EYE = [33, 160, 158, 133, 153, 144]
+    # Define landmark indices for left and right eyes (MediaPipe standard)
+    LEFT_EYE = [362, 385, 387, 263, 373, 380]
+    RIGHT_EYE = [33, 160, 158, 133, 153, 144]
 
-        h, w, _ = img.shape
-        
-        for face_landmarks in results.multi_face_landmarks:
-            # Extract left eye points
+    h, w, _ = img.shape
+    
+    for face_landmarks in results.multi_face_landmarks:
+        # Extract left eye points
             left_eye_pts = []
             for idx in LEFT_EYE:
                 lm = face_landmarks.landmark[idx]
@@ -78,24 +71,44 @@ def process_image(img_path, blur_threshold):
     return {"keep": True, "reason": "清晰度及人物眼部状态均合格"}
 
 def main():
-    if len(sys.argv) < 2:
-        print(json.dumps({"keep": False, "reason": "未提供图片路径"}))
-        return
+    # Signal that Python is ready by printing a known keyword if needed (Electron can wait for it)
+    print("READY", flush=True)
 
-    img_path = sys.argv[1]
-    blur_threshold = 200.0
-    if len(sys.argv) >= 3:
-        try:
-            blur_threshold = float(sys.argv[2])
-        except ValueError:
-            pass
+    mp_face_mesh = mp.solutions.face_mesh
     
-    try:
-        result = process_image(img_path, blur_threshold)
-    except Exception as e:
-        result = {"keep": False, "reason": f"处理出错: {str(e)}"}
-        
-    print(json.dumps(result, ensure_ascii=False))
+    # Initialize the heavy model ONCE before the infinite loop
+    with mp_face_mesh.FaceMesh(
+        static_image_mode=True,
+        max_num_faces=3,
+        refine_landmarks=True,
+        min_detection_confidence=0.5) as face_mesh:
+
+        # Infinite daemon loop
+        for line in sys.stdin:
+            line = line.strip()
+            if not line:
+                continue
+                
+            if line == "exit":
+                break
+
+            try:
+                data = json.loads(line)
+                img_path = data.get("file")
+                blur_threshold = float(data.get("threshold", 200.0))
+                
+                if not img_path:
+                    result = {"keep": False, "reason": "未提供图片路径"}
+                else:
+                    result = process_image(img_path, blur_threshold, face_mesh)
+                    
+            except json.JSONDecodeError:
+                result = {"keep": False, "reason": "JSON格式无法解析"}
+            except Exception as e:
+                result = {"keep": False, "reason": f"处理出错: {str(e)}"}
+                
+            # Must flush otherwise Electron might not see it until buffer is full
+            print(json.dumps(result, ensure_ascii=False), flush=True)
 
 if __name__ == "__main__":
     main()
