@@ -1,12 +1,40 @@
 {
-  "name": "event-photo-culler",
+  "name": "vision-cull-pro",
   "version": "1.0.0",
   "description": "Local Event Photo Culler - local vision algorithms to discard blurred or closed-eye photos",
-  "main": "server.js",
+  "main": "main.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "electron .",
+    "pack:mac": "electron-builder --mac",
+    "pack:win": "electron-builder --win"
   },
-  "dependencies": {
-    "express": "^4.18.2"
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^29.1.5",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.visioncull.pro",
+    "productName": "VisionCull Pro",
+    "directories": {
+      "output": "release"
+    },
+    "mac": {
+      "category": "public.app-category.photography",
+      "target": [
+        "dmg"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "extraResources": [
+      {
+        "from": "dist/analyzer",
+        "to": "bin/analyzer"
+      }
+    ]
   }
 }

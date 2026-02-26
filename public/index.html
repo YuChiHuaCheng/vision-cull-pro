@@ -426,8 +426,8 @@
             hideError();
 
             try {
-                const res = await fetch('/api/select-folder');
-                const data = await res.json();
+                // Use Electron IPC
+                const data = await window.electronAPI.selectFolder();
 
                 if (data.success && data.path) {
                     input.value = data.path;
@@ -484,14 +484,13 @@
 
             addLog('🔗 建立本地推断引擎连接中...', 'highlight');
 
-            // Connect SSE
+            // Set up IPC receiver
             const threshold = blurThresholdSlider.value;
-            eventSource = new EventSource(`/api/process?path=${encodeURIComponent(path)}&blur=${threshold}`);
             let totalFiles = 0;
 
-            eventSource.onmessage = (e) => {
-                const data = JSON.parse(e.data);
+            window.electronAPI.removeProcessUpdateListeners();
 
+            window.electronAPI.onProcessUpdate((data) => {
                 if (data.type === 'start') {
                     totalFiles = data.total;
                     progressText.textContent = `0 / ${totalFiles}`;
@@ -518,18 +517,13 @@
                     showError(data.message);
                     finish();
                 }
-            };
+            });
 
-            eventSource.onerror = () => {
-                addLog('[连接中断] 与本地神经引擎失去通信。', 'error');
-                finish();
-            };
+            // Trigger the process
+            window.electronAPI.startProcess(path, threshold);
 
             function finish() {
-                if (eventSource) {
-                    eventSource.close();
-                    eventSource = null;
-                }
+                window.electronAPI.removeProcessUpdateListeners();
                 btn.disabled = false;
                 selectBtn.disabled = false;
                 input.disabled = false;
