@@ -1,0 +1,12 @@
+{
+  "name": "event-photo-culler",
+  "version": "1.0.0",
+  "description": "Local Event Photo Culler - local vision algorithms to discard blurred or closed-eye photos",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

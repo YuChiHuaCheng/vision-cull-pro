@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Event Photo Culler</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyan: {
+                            400: '#22d3ee',
+                            500: '#06b6d4',
+                        },
+                        slate: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['"SF Mono"', 'ui-monospace', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+                        sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            /* slate-950 */
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(34, 211, 238, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.08), transparent 25%);
+            color: #e2e8f0;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .text-glow {
+            text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+        }
+
+        .btn-glow {
+            box-shadow: 0 0 15px rgba(34, 211, 238, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-glow:hover:not(:disabled) {
+            box-shadow: 0 0 25px rgba(34, 211, 238, 0.6);
+        }
+
+        #log-container {
+            scroll-behavior: smooth;
+        }
+
+        .log-item {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(34, 211, 238, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(34, 211, 238, 0.5);
+        }
+    </style>
+</head>
+
+<body
+    class="min-h-screen font-sans bg-[#020617] text-slate-200 selection:bg-cyan-500/30 flex flex-col items-center justify-center p-4">
+
+    <!-- Main Application Window -->
+    <div class="w-full max-w-6xl glass-panel text-slate-200 rounded-2xl relative overflow-hidden flex flex-col"
+        style="height: 85vh; min-height: 700px;">
+
+        <!-- Decorative Grid Background -->
+        <div class="absolute inset-0 z-0 opacity-[0.02] pointer-events-none"
+            style="background-image: linear-gradient(#22d3ee 1px, transparent 1px), linear-gradient(90deg, #22d3ee 1px, transparent 1px); background-size: 40px 40px;">
+        </div>
+
+        <!-- Header / Toolbar -->
+        <header
+            class="relative z-10 border-b border-white/5 bg-slate-900/40 backdrop-blur-md px-8 py-5 flex items-center justify-between shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-4">
+                <div
+                    class="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.15)]">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide text-white drop-shadow-md">
+                        Vision<span class="text-cyan-400 font-normal">Cull</span> Pro
+                    </h1>
+                    <p class="text-slate-500 mt-0.5 text-[10px] font-mono uppercase tracking-widest">本地 AI 视觉引擎</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div
+                    class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    引擎就绪
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="relative z-10 flex-1 flex flex-col md:flex-row overflow-hidden">
+
+            <!-- Left Panel: Controls (Sidebar) -->
+            <div
+                class="w-full md:w-[380px] bg-black/20 border-r border-white/5 flex flex-col p-6 overflow-y-auto custom-scrollbar flex-shrink-0">
+
+                <h2
+                    class="text-xs font-mono text-slate-500 uppercase tracking-widest mb-6 border-b border-white/5 pb-2">
+                    终端配置</h2>
+                <!-- Target Selection Box -->
+                <div class="mb-8 group">
+                    <label
+                        class="block text-[11px] font-mono text-cyan-500/80 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        源文件夹路径
+                    </label>
+
+                    <div
+                        class="relative bg-slate-900/60 rounded-xl border border-slate-700/60 p-1 flex flex-col gap-2 transition-all hover:border-cyan-500/30">
+                        <div class="relative w-full">
+                            <input type="text" id="folder-path" readonly placeholder="点击下方按钮选择路径..."
+                                class="w-full bg-transparent text-slate-300 text-sm py-2.5 px-3 focus:outline-none cursor-pointer truncate font-mono placeholder-slate-600">
+                        </div>
+
+                        <button id="select-btn"
+                            class="w-full py-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-sm rounded-lg border border-slate-600/50 hover:border-cyan-500/50 transition-colors flex justify-center items-center gap-2">
+                            <svg class="h-4 w-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                            </svg>
+                            浏览本地文件
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Settings Area -->
+                <div class="mb-auto">
+                    <label
+                        class="block text-[11px] font-mono text-cyan-500/80 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        算法判定参数
+                    </label>
+
+                    <div class="bg-slate-900/60 p-5 rounded-xl border border-slate-700/60">
+                        <div class="flex justify-between items-end mb-3">
+                            <span class="text-sm font-medium text-slate-300">清晰度阈值 (Blur Threshold)</span>
+                            <span class="font-mono text-lg text-cyan-400 text-glow" id="threshold-val">200</span>
+                        </div>
+
+                        <input type="range" id="blur-threshold" min="0" max="800" step="10" value="200"
+                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500 hover:accent-cyan-400 transition-colors focus:outline-none mb-6">
+
+                        <div class="space-y-3">
+                            <div id="tier-1"
+                                class="p-3 bg-black/40 rounded-lg border border-white/5 transition-all duration-300">
+                                <h4
+                                    class="text-xs font-semibold text-slate-300 mb-1 flex justify-between transition-colors duration-300">
+                                    <span>日常偏好 (0 - 300)</span>
+                                    <span class="text-slate-500">手机拍摄 / 截屏影像</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-500 leading-tight transition-colors duration-300">
+                                    较宽松标准。允许少许动态模糊与轻微失焦。</p>
+                            </div>
+                            <div id="tier-2"
+                                class="p-3 bg-cyan-900/10 rounded-lg border border-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.1)] transition-all duration-300">
+                                <h4
+                                    class="text-xs font-semibold text-cyan-400 mb-1 flex justify-between transition-colors duration-300">
+                                    <span>优享画质 (300 - 500)</span>
+                                    <span class="text-slate-500">单反直出</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-400 leading-tight transition-colors duration-300">
+                                    严格标准。要求边缘清晰无明显拉丝。强烈推荐日常挑片使用。</p>
+                            </div>
+                            <div id="tier-3"
+                                class="p-3 bg-black/40 rounded-lg border border-white/5 transition-all duration-300">
+                                <h4
+                                    class="text-xs font-semibold text-slate-300 mb-1 flex justify-between transition-colors duration-300">
+                                    <span>专业影棚 (500+)</span>
+                                    <span class="text-slate-500">影棚灯光 / 三脚架</span>
+                                </h4>
+                                <p class="text-[11px] text-slate-500 leading-tight transition-colors duration-300">
+                                    极强标准。仅放行如同刀锋般锐利的定格影像。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <div class="mt-8 pt-6 border-t border-white/5">
+                    <p id="error-msg"
+                        class="text-rose-400 text-xs mb-3 hidden font-mono flex items-center justify-center gap-2">
+                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span></span>
+                    </p>
+
+                    <button id="start-btn" disabled
+                        class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-4 px-6 rounded-xl btn-glow disabled:opacity-50 disabled:cursor-not-allowed disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 disabled:shadow-none flex justify-center items-center gap-3 transition-all duration-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="tracking-widest uppercase text-sm">开始执行扫描</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel: Output & Terminal -->
+            <div class="flex-1 bg-black/40 flex flex-col p-6 min-h-[400px]">
+
+                <h2
+                    class="text-xs font-mono text-slate-500 uppercase tracking-widest mb-6 border-b border-white/5 pb-2 flex justify-between">
+                    <span>处理日志终端</span>
+                    <span id="progress-text" class="text-cyan-500 font-bold hidden">0 / 0</span>
+                </h2>
+
+                <!-- Progress Area -->
+                <div id="progress-area" class="mb-6 hidden shrink-0">
+                    <div
+                        class="w-full bg-slate-900/80 rounded-full h-1.5 overflow-hidden border border-slate-800 shadow-inner">
+                        <div id="progress-bar"
+                            class="bg-gradient-to-r from-cyan-500 to-blue-500 h-1.5 rounded-full shadow-[0_0_10px_#22d3ee] transition-all duration-300 ease-out"
+                            style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Log Area -->
+                <div
+                    class="flex-1 bg-[#090b14] border border-slate-800/80 rounded-xl p-5 overflow-hidden relative shadow-inner group">
+                    <div class="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="document.getElementById('log-list').innerHTML=''"
+                            class="text-xs text-slate-500 hover:text-slate-300 font-mono transition-colors">清空屏幕</button>
+                    </div>
+                    <ul id="log-list"
+                        class="space-y-2.5 text-[13px] font-mono h-full overflow-y-auto custom-scrollbar pr-2 pb-4">
+                        <li class="text-slate-600 flex items-center gap-2">
+                            <span>></span>
+                            <span>系统已初始化。等待下发配置任务...</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const btn = document.getElementById('start-btn');
+        const selectBtn = document.getElementById('select-btn');
+        const input = document.getElementById('folder-path');
+        const logs = document.getElementById('log-list');
+        const progressArea = document.getElementById('progress-area');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const errorMsg = document.getElementById('error-msg');
+        const errorSpan = errorMsg.querySelector('span');
+        const blurThresholdSlider = document.getElementById('blur-threshold');
+        const thresholdValDisplay = document.getElementById('threshold-val');
+
+        const tier1 = document.getElementById('tier-1');
+        const tier2 = document.getElementById('tier-2');
+        const tier3 = document.getElementById('tier-3');
+
+        const baseClass = "p-3 rounded-lg transition-all duration-300 bg-black/40 border border-white/5";
+        const baseTitle = "text-xs font-semibold mb-1 flex justify-between transition-colors duration-300 text-slate-300";
+        const baseText = "text-[11px] leading-tight transition-colors duration-300 text-slate-500";
+
+        const activeClass = "p-3 rounded-lg transition-all duration-300 bg-cyan-900/10 border border-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.1)]";
+        const activeTitle = "text-xs font-semibold mb-1 flex justify-between transition-colors duration-300 text-cyan-400";
+        const activeText = "text-[11px] leading-tight transition-colors duration-300 text-slate-400";
+
+        function updateTierHighlight(val) {
+            // Reset all
+            tier1.className = baseClass;
+            tier1.querySelector('h4').className = baseTitle;
+            tier1.querySelector('p').className = baseText;
+
+            tier2.className = baseClass;
+            tier2.querySelector('h4').className = baseTitle;
+            tier2.querySelector('p').className = baseText;
+
+            tier3.className = baseClass;
+            tier3.querySelector('h4').className = baseTitle;
+            tier3.querySelector('p').className = baseText;
+
+            // Highlight active
+            if (val < 300) {
+                tier1.className = activeClass;
+                tier1.querySelector('h4').className = activeTitle;
+                tier1.querySelector('p').className = activeText;
+            } else if (val >= 300 && val < 500) {
+                tier2.className = activeClass;
+                tier2.querySelector('h4').className = activeTitle;
+                tier2.querySelector('p').className = activeText;
+            } else {
+                tier3.className = activeClass;
+                tier3.querySelector('h4').className = activeTitle;
+                tier3.querySelector('p').className = activeText;
+            }
+        }
+
+        // Update threshold display continuously
+        blurThresholdSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            thresholdValDisplay.textContent = val;
+            updateTierHighlight(val);
+        });
+
+        // initial state
+        updateTierHighlight(parseInt(blurThresholdSlider.value));
+
+        let eventSource = null;
+
+        function addLog(text, status = 'info') {
+            const li = document.createElement('li');
+            li.className = 'log-item flex items-start gap-3';
+
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            let colorCls = 'text-slate-300';
+            let contentCls = 'text-slate-400';
+
+            if (status === 'success') {
+                contentCls = 'text-emerald-400';
+            } else if (status === 'error') {
+                contentCls = 'text-rose-400';
+            } else if (status === 'highlight') {
+                contentCls = 'text-cyan-300';
+            }
+
+            li.innerHTML = `
+                <span class="text-slate-600 shrink-0 select-none mr-2">[${time}]</span>
+                <span class="${contentCls}">${text}</span>
+            `;
+
+            logs.appendChild(li);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        function showError(msg) {
+            errorSpan.textContent = msg;
+            errorMsg.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMsg.classList.add('hidden');
+        }
+
+        // --- Select Folder via Backend API ---
+        selectBtn.addEventListener('click', async () => {
+            selectBtn.disabled = true;
+            const originalHtml = selectBtn.innerHTML;
+            selectBtn.innerHTML = `
+                <svg class="animate-spin h-4 w-4 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
+                </svg>
+                等待系统响应...
+            `;
+            hideError();
+
+            try {
+                const res = await fetch('/api/select-folder');
+                const data = await res.json();
+
+                if (data.success && data.path) {
+                    input.value = data.path;
+                    btn.disabled = false;
+                } else {
+                    if (data.reason !== '用户取消了选择') {
+                        showError(data.reason || '选择文件夹失败');
+                    }
+                }
+            } catch (err) {
+                showError('Local connection failed.');
+            } finally {
+                selectBtn.disabled = false;
+                selectBtn.innerHTML = originalHtml;
+            }
+        });
+
+        // Click on input triggers select
+        input.addEventListener('click', () => {
+            if (!input.disabled) selectBtn.click();
+        });
+
+        // --- Start Processing ---
+        btn.addEventListener('click', () => {
+            const path = input.value.trim();
+            if (!path) {
+                showError("处理未就绪，请先选择目标文件夹。");
+                return;
+            }
+            hideError();
+
+            // Reset UI
+            logs.innerHTML = '';
+            btn.disabled = true;
+            selectBtn.disabled = true;
+            input.disabled = true;
+            progressText.classList.remove('hidden');
+
+            const originalBtnHtml = btn.innerHTML;
+            btn.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+            </svg>
+            <span class="tracking-widest uppercase text-sm">正在深度分析...</span>
+            `;
+
+            progressArea.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressText.textContent = '初始化...';
+
+            addLog('🔗 建立本地推断引擎连接中...', 'highlight');
+
+            // Connect SSE
+            const threshold = blurThresholdSlider.value;
+            eventSource = new EventSource(`/api/process?path=${encodeURIComponent(path)}&blur=${threshold}`);
+            let totalFiles = 0;
+
+            eventSource.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+
+                if (data.type === 'start') {
+                    totalFiles = data.total;
+                    progressText.textContent = `0 / ${totalFiles}`;
+                    addLog(`📂 引擎已锁定 ${totalFiles} 个图像目标，分析正式开始。`, 'info');
+                }
+                else if (data.type === 'progress') {
+                    const percent = Math.round((data.current / totalFiles) * 100);
+                    progressBar.style.width = `${percent}%`;
+                    progressText.textContent = `${data.current} / ${totalFiles}`;
+
+                    if (data.keep) {
+                        addLog(`[PASS 通过] ${data.fileName} - ${data.reason}`, 'success');
+                    } else {
+                        addLog(`[REJECT 拒绝] ${data.fileName} - ${data.reason}`, 'error');
+                    }
+                }
+                else if (data.type === 'done') {
+                    progressBar.style.width = '100%';
+                    addLog('✅ 批量鉴片进程已全部执行完毕。', 'highlight');
+                    finish();
+                }
+                else if (data.type === 'error') {
+                    addLog(`[系统错误] ${data.message}`, 'error');
+                    showError(data.message);
+                    finish();
+                }
+            };
+
+            eventSource.onerror = () => {
+                addLog('[连接中断] 与本地神经引擎失去通信。', 'error');
+                finish();
+            };
+
+            function finish() {
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+                btn.disabled = false;
+                selectBtn.disabled = false;
+                input.disabled = false;
+                btn.innerHTML = originalBtnHtml;
+            }
+        });
+    </script>
+</body>
+
+</html>
