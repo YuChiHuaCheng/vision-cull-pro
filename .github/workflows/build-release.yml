@@ -1,0 +1,63 @@
+name: Build and Release
+on:
+  push:
+    tags:
+      - 'v*' # Trigger only when a git tag starting with 'v' is pushed (e.g. v1.0.0)
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python Dependencies
+        run: |
+          # mediapipe face mesh relies on protobuf and opencv
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Compile Python Backend (Analyzer)
+        run: |
+          pyinstaller --name analyzer --onefile analyzer.py
+
+      - name: Install Node.js Dependencies
+        run: npm install
+
+      - name: Build and Package Electron App (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npm run pack:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Package Electron App (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npm run pack:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            release/*.dmg
+            release/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
