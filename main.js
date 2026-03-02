@@ -1,7 +1,13 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+
+// Register the local scheme as privileged (allows loading media safely)
+protocol.registerSchemesAsPrivileged([
+    { scheme: 'local', privileges: { bypassCSP: true, supportFetchAPI: true, secure: true } }
+]);
+
 
 function isImage(filename) {
     const ext = path.extname(filename).toLowerCase();
@@ -28,6 +34,20 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+    // Handle the custom local:// protocol
+    protocol.handle('local', (request) => {
+        // Strip out 'local://' from the requested URL
+        let filePath = request.url.slice('local://'.length);
+
+        // Handle Windows path oddities from URLs (e.g., local:///C:/...)
+        if (process.platform === 'win32' && filePath.startsWith('/')) {
+            filePath = filePath.slice(1);
+        }
+
+        filePath = decodeURI(filePath);
+        return net.fetch('file://' + filePath);
+    });
+
     createWindow();
 
     app.on('activate', function () {
@@ -173,6 +193,7 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
             const filePath = path.join(targetPath, file);
             let keep = false;
             let reason = "";
+            let destPath = null;
 
             try {
                 const result = JSON.parse(trimmed);
@@ -185,12 +206,13 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
             }
 
             if (keep) {
-                const destPath = path.join(goodDir, file);
+                destPath = path.join(goodDir, file);
                 try {
                     fs.copyFileSync(filePath, destPath);
                 } catch (err) {
                     console.error(`复制文件失败: ${file}`, err);
                     reason += ' (复制文件出错)';
+                    destPath = null; // Don't try to show it if copy failed
                 }
             }
 
@@ -202,7 +224,8 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
                 current,
                 fileName: file,
                 keep: keep,
-                reason: reason
+                reason: reason,
+                destPath: destPath
             });
 
             // Trigger the next one
