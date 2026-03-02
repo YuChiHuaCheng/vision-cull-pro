@@ -19,6 +19,16 @@
     "directories": {
       "output": "release"
     },
+    "files": [
+      "**/*",
+      "!venv311${/*}",
+      "!venv${/*}",
+      "!__pycache__${/*}",
+      "!**/*.py",
+      "!**/*.spec",
+      "!**/*.md",
+      "!requirements.txt"
+    ],
     "mac": {
       "category": "public.app-category.photography",
       "target": [
