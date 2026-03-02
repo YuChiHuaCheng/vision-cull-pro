@@ -61,8 +61,10 @@ app.on('window-all-closed', function () {
 
 // IPC Handler: Select Folder
 ipcMain.handle('dialog:openDirectory', async () => {
+    // macOS file picker can hang when resolving iCloud/Network directories.
+    // Removing defaultPath lets macOS use the last opened path cache which is instant.
     const { canceled, filePaths } = await dialog.showOpenDialog({
-        properties: ['openDirectory'],
+        properties: ['openDirectory', 'dontAddToRecent'],
         title: '请选择包含活动照片的文件夹',
         buttonLabel: '选择此文件夹'
     });
@@ -94,15 +96,6 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
         now.getHours().toString().padStart(2, '0') +
         now.getMinutes().toString().padStart(2, '0') +
         now.getSeconds().toString().padStart(2, '0');
-
-    const goodDir = path.join(targetPath, `Selected_Good_${timestamp}`);
-
-    try {
-        if (!fs.existsSync(goodDir)) fs.mkdirSync(goodDir, { recursive: true });
-    } catch (err) {
-        event.sender.send('process:update', { type: 'error', message: '创建分类文件夹失败，请检查读写权限' });
-        return;
-    }
 
     let files = [];
     try {
@@ -193,7 +186,6 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
             const filePath = path.join(targetPath, file);
             let keep = false;
             let reason = "";
-            let destPath = null;
 
             try {
                 const result = JSON.parse(trimmed);
@@ -205,17 +197,6 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
                 reason = "分析器输出异常或解析失败";
             }
 
-            if (keep) {
-                destPath = path.join(goodDir, file);
-                try {
-                    fs.copyFileSync(filePath, destPath);
-                } catch (err) {
-                    console.error(`复制文件失败: ${file}`, err);
-                    reason += ' (复制文件出错)';
-                    destPath = null; // Don't try to show it if copy failed
-                }
-            }
-
             // Advance the current pointer
             current++;
 
@@ -225,8 +206,9 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
                 fileName: file,
                 keep: keep,
                 reason: reason,
-                destPath: destPath
+                originalPath: filePath
             });
+
 
             // Trigger the next one
             processNext();
@@ -254,4 +236,111 @@ ipcMain.on('process:start', (event, targetPath, blurThreshold) => {
             });
         }
     });
+});
+
+// --- V1.2 Action IPC Handlers ---
+
+// 1. Copy Files
+ipcMain.handle('action:copyFiles', async (event, sourcePath, fileNames) => {
+    try {
+        const now = new Date();
+        const timestamp = now.getFullYear().toString() +
+            (now.getMonth() + 1).toString().padStart(2, '0') +
+            now.getDate().toString().padStart(2, '0') + '_' +
+            now.getHours().toString().padStart(2, '0') +
+            now.getMinutes().toString().padStart(2, '0') +
+            now.getSeconds().toString().padStart(2, '0');
+
+        const goodDir = path.join(sourcePath, `01_Selected_Good_${timestamp}`);
+        if (!fs.existsSync(goodDir)) {
+            fs.mkdirSync(goodDir, { recursive: true });
+        }
+
+        for (const file of fileNames) {
+            // Security: prevent path traversal via crafted filenames
+            const safeName = path.basename(file);
+            const src = path.join(sourcePath, safeName);
+            const dst = path.join(goodDir, safeName);
+            // Double-check dst is still inside goodDir
+            if (!dst.startsWith(goodDir + path.sep)) continue;
+            if (fs.existsSync(src)) {
+                fs.copyFileSync(src, dst);
+            }
+        }
+        return { success: true };
+    } catch (error) {
+        console.error("Error copying files:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+// 2. Check XMP Conflict
+ipcMain.handle('action:checkXmpConflict', async (event, sourcePath, fileNames) => {
+    try {
+        for (const file of fileNames) {
+            // e.g. "IMG_1234.jpg" -> "IMG_1234.xmp"
+            const baseName = path.parse(file).name;
+            const xmpPath = path.join(sourcePath, `${baseName}.xmp`);
+            if (fs.existsSync(xmpPath)) {
+                return { conflict: true };
+            }
+        }
+        return { conflict: false };
+    } catch (error) {
+        console.error("Error checking xmp conflict:", error);
+        return { conflict: false }; // Fail silently and assume no conflict on error
+    }
+});
+
+// 3. Create XMP
+ipcMain.handle('action:createXmp', async (event, sourcePath, results, overwrite) => {
+    try {
+        for (const res of results) {
+            // Security: strip any directory components from filename
+            const safeName = path.basename(res.fileName);
+            const baseName = path.parse(safeName).name;
+            const xmpPath = path.join(sourcePath, `${baseName}.xmp`);
+
+            // Double-check xmpPath stays inside sourcePath
+            if (!xmpPath.startsWith(sourcePath + path.sep)) continue;
+
+            if (!overwrite && fs.existsSync(xmpPath)) {
+                continue;
+            }
+
+            const rating = res.keep ? 5 : 1;
+            const colorLabel = res.keep ? 'Green' : 'Red';
+
+            const xmpContent = `<?xpacket begin="\uFEFF" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 7.0-c000 1.000000, 0000/00/00-00:00:00        ">
+ <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about=""
+    xmlns:xmp="http://ns.adobe.com/xap/1.0/">
+   <xmp:Rating>${rating}</xmp:Rating>
+   <xmp:Label>${colorLabel}</xmp:Label>
+  </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>
+<?xpacket end="w"?>`;
+
+            fs.writeFileSync(xmpPath, xmpContent, 'utf8');
+        }
+        return { success: true };
+    } catch (error) {
+        console.error("Error creating XMP:", error);
+        return { success: false, error: error.message };
+    }
+});
+
+// 4. Analytics Track
+ipcMain.on('analytics:track', (event, payload) => {
+    try {
+        const appDataPath = app.getPath('userData');
+        const logPath = path.join(appDataPath, 'analytics.log');
+        // Bug fix: was '\\n' (literal backslash-n), entries were concatenated
+        const logEntry = JSON.stringify(payload) + '\n';
+        fs.appendFileSync(logPath, logEntry, 'utf8');
+    } catch (err) {
+        console.error("Analytics writing error:", err);
+    }
 });

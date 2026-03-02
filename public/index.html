@@ -49,6 +49,15 @@
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
         }
 
+        /* Scroll panel isolation: prevents backdrop-filter parent from
+           triggering full-compositor repaint on every scroll frame.
+           Each panel becomes its own independent stacking context. */
+        .scroll-isolated {
+            isolation: isolate;
+            contain: strict;
+            position: relative;
+        }
+
         .text-glow {
             text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
         }
@@ -60,10 +69,6 @@
 
         .btn-glow:hover:not(:disabled) {
             box-shadow: 0 0 25px rgba(34, 211, 238, 0.6);
-        }
-
-        #log-container {
-            scroll-behavior: smooth;
         }
 
         .log-item {
@@ -151,7 +156,7 @@
 
             <!-- Left Panel: Controls (Sidebar) -->
             <div
-                class="w-full md:w-[380px] bg-black/20 border-r border-white/5 flex flex-col p-6 overflow-y-auto custom-scrollbar flex-shrink-0">
+                class="scroll-isolated w-full md:w-[380px] bg-black/20 border-r border-white/5 flex flex-col p-6 overflow-y-auto custom-scrollbar flex-shrink-0">
 
                 <h2
                     class="text-xs font-mono text-slate-500 uppercase tracking-widest mb-6 border-b border-white/5 pb-2">
@@ -187,7 +192,7 @@
                 </div>
 
                 <!-- Settings Area -->
-                <div class="mb-auto">
+                <div class="flex flex-col gap-4">
                     <label
                         class="block text-[11px] font-mono text-cyan-500/80 uppercase tracking-widest mb-3 flex items-center gap-2">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,7 +250,7 @@
                 </div>
 
                 <!-- Action Button -->
-                <div class="mt-8 pt-6 border-t border-white/5">
+                <div class="mt-auto pt-6 border-t border-white/5">
                     <p id="error-msg"
                         class="text-rose-400 text-xs mb-3 hidden font-mono flex items-center justify-center gap-2">
                         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -297,7 +302,7 @@
                             class="text-xs text-slate-500 hover:text-slate-300 font-mono transition-colors">清空屏幕</button>
                     </div>
                     <ul id="log-list"
-                        class="space-y-2.5 text-[13px] font-mono h-full overflow-y-auto custom-scrollbar pr-2 pb-4">
+                        class="scroll-isolated space-y-2.5 text-[13px] font-mono h-full overflow-y-auto custom-scrollbar pr-2 pb-4">
                         <li class="text-slate-600 flex items-center gap-2">
                             <span>></span>
                             <span>系统已初始化。等待下发配置任务...</span>
@@ -321,7 +326,7 @@
                         class="text-emerald-500/80 font-mono text-[11px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">0</span>
                 </h2>
 
-                <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 relative z-10" id="gallery-container">
+                <div class="scroll-isolated flex-1 overflow-y-auto custom-scrollbar pr-2 z-10" id="gallery-container">
                     <div id="gallery-empty-state"
                         class="absolute inset-0 flex flex-col items-center justify-center text-slate-600/50">
                         <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,7 +338,7 @@
                     </div>
 
                     <!-- CSS Grid for the waterfall -->
-                    <div id="gallery-grid" class="grid grid-cols-2 xl:grid-cols-3 gap-4 auto-rows-max hidden">
+                    <div id="gallery-grid" class="grid grid-cols-2 xl:grid-cols-3 gap-4 auto-rows-max hidden mb-24">
                         <!-- Images will be injected here -->
                     </div>
                 </div>
@@ -342,9 +347,72 @@
                 <div
                     class="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-50 z-20">
                 </div>
+
+                <!-- NEW: Action Bar (Absolute bottom) -->
+                <div id="action-bar"
+                    class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#020617] via-[#020617]/95 to-transparent z-30 transform translate-y-full opacity-0 pointer-events-none transition-all duration-500 flex justify-center gap-3">
+                    <button id="btn-copy"
+                        class="px-5 py-2.5 bg-cyan-600/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-400 font-medium rounded-xl text-sm btn-glow disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2">
+                            </path>
+                        </svg>
+                        <span id="btn-copy-text" class="tracking-wider">复制至新文件夹</span>
+                    </button>
+
+                    <button id="btn-xmp"
+                        class="px-5 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-medium rounded-xl text-sm transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                        <span id="btn-xmp-text" class="tracking-wider">创建xmp文件</span>
+                    </button>
+
+                    <button id="btn-cancel"
+                        class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium rounded-xl text-sm transition-all flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        <span class="tracking-wider">取消</span>
+                    </button>
+                </div>
             </div>
 
         </main>
+    </div>
+
+    <!-- XMP Conflict Modal -->
+    <div id="xmp-modal"
+        class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6 max-w-md w-full relative z-10 transform scale-95 transition-transform duration-300"
+            id="xmp-modal-content">
+            <div class="flex items-center gap-3 mb-4 text-amber-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                    </path>
+                </svg>
+                <h3 class="text-lg font-bold tracking-wider">XMP 标签文件冲突</h3>
+            </div>
+            <p class="text-slate-300 text-sm mb-6 leading-relaxed">检测到部分照片已存在 XMP 标签文件。请选择处理方式：</p>
+            <div class="flex flex-col gap-3">
+                <button id="modal-btn-overwrite"
+                    class="w-full py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-medium transition-colors">
+                    ⚠️ 覆盖原文件 (Overwrite)
+                </button>
+                <button id="modal-btn-skip"
+                    class="w-full py-3 bg-cyan-600/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/50 rounded-xl text-sm font-medium transition-colors">
+                    ✅ 保留原文件，仅跳过冲突项 (Skip)
+                </button>
+                <button id="modal-btn-cancel"
+                    class="mt-2 text-slate-500 hover:text-slate-300 text-sm font-medium">取消操作</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -364,7 +432,45 @@
         const galleryEmptyState = document.getElementById('gallery-empty-state');
         const galleryCount = document.getElementById('gallery-count');
 
+        const actionBar = document.getElementById('action-bar');
+        const btnCopy = document.getElementById('btn-copy');
+        const btnCopyText = document.getElementById('btn-copy-text');
+        const btnXmp = document.getElementById('btn-xmp');
+        const btnXmpText = document.getElementById('btn-xmp-text');
+        const btnCancel = document.getElementById('btn-cancel');
+
+        const xmpModal = document.getElementById('xmp-modal');
+        const xmpModalContent = document.getElementById('xmp-modal-content');
+        const btnModalOverwrite = document.getElementById('modal-btn-overwrite');
+        const btnModalSkip = document.getElementById('modal-btn-skip');
+        const btnModalCancel = document.getElementById('modal-btn-cancel');
+
         let keptPhotosCount = 0;
+        let scanResults = [];
+        let currentSourcePath = '';
+
+        // Analytics PV/UV Setup
+        function getDeviceId() {
+            let id = localStorage.getItem('device_id');
+            if (!id) {
+                id = crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now();
+                localStorage.setItem('device_id', id);
+            }
+            return id;
+        }
+
+        function trackAction(actionType) {
+            if (window.electronAPI && window.electronAPI.trackAnalytics) {
+                window.electronAPI.trackAnalytics({
+                    device_id: getDeviceId(),
+                    action_type: actionType,
+                    timestamp: Date.now()
+                });
+            }
+        }
+
+        // Track PV on load
+        trackAction('page_view');
 
         const tier1 = document.getElementById('tier-1');
         const tier2 = document.getElementById('tier-2');
@@ -527,12 +633,18 @@
             progressBar.style.width = '0%';
             progressText.textContent = '初始化...';
 
-            // Reset Gallery
+            // Reset Gallery & State
             galleryGrid.innerHTML = '';
             galleryGrid.classList.add('hidden');
             galleryEmptyState.classList.remove('hidden');
             keptPhotosCount = 0;
             galleryCount.textContent = '0';
+            scanResults = [];
+            currentSourcePath = path;
+
+            // Hide action bar
+            actionBar.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+            actionBar.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
 
             addLog('🔗 建立本地推断引擎连接中...', 'highlight');
 
@@ -553,6 +665,9 @@
                     progressBar.style.width = `${percent}%`;
                     progressText.textContent = `${data.current} / ${totalFiles}`;
 
+                    // Store the result
+                    scanResults.push(data);
+
                     if (data.keep) {
                         addLog(`[PASS 通过] ${data.fileName} - ${data.reason}`, 'success');
 
@@ -564,11 +679,11 @@
                         keptPhotosCount++;
                         galleryCount.textContent = keptPhotosCount;
 
-                        if (data.destPath) {
+                        if (data.originalPath) {
                             const imgContainer = document.createElement('div');
                             imgContainer.className = 'group relative aspect-square rounded-xl overflow-hidden border border-white/5 bg-slate-900/50 shadow-lg animation-fadeIn';
                             // Encode URL to handle spaces/special characters, prefix with custom protocol
-                            const safeURL = "local://" + data.destPath.split(path.sep).join('/');
+                            const safeURL = "local://" + data.originalPath.split(path.sep).join('/');
 
                             imgContainer.innerHTML = `
                                 <img src="${safeURL}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
@@ -606,7 +721,127 @@
                 selectBtn.disabled = false;
                 input.disabled = false;
                 btn.innerHTML = originalBtnHtml;
+
+                // Show Action bar if we have results
+                if (scanResults.length > 0) {
+                    actionBar.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+                    actionBar.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+                }
             }
+        });
+
+        // --- Action Buttons Variables & Logic ---
+
+        btnCancel.addEventListener('click', () => {
+            trackAction('click_cancel');
+            window.location.reload();
+        });
+
+        let isCopying = false;
+        btnCopy.addEventListener('click', async () => {
+            if (isCopying) return;
+            trackAction('click_copy');
+
+            const keepFiles = scanResults.filter(r => r.keep).map(r => r.fileName);
+            if (keepFiles.length === 0) {
+                showError("没有可保留的照片可以复制");
+                return;
+            }
+
+            isCopying = true;
+            btnCopy.disabled = true;
+            btnCopyText.textContent = "复制中...";
+
+            const res = await window.electronAPI.copyFiles(currentSourcePath, keepFiles);
+
+            if (res.success) {
+                btnCopyText.textContent = "✅ 复制成功 (5s 后可再次操作)";
+                let countdown = 5;
+                const interval = setInterval(() => {
+                    countdown--;
+                    if (countdown <= 0) {
+                        clearInterval(interval);
+                        btnCopyText.textContent = "复制至新文件夹";
+                        btnCopy.disabled = false;
+                        isCopying = false;
+                    } else {
+                        btnCopyText.textContent = `✅ 复制成功 (${countdown}s 后可再次操作)`;
+                    }
+                }, 1000);
+            } else {
+                showError("复制失败: " + res.error);
+                btnCopyText.textContent = "复制至新文件夹";
+                btnCopy.disabled = false;
+                isCopying = false;
+            }
+        });
+
+        function showXmpModal() {
+            xmpModal.classList.remove('opacity-0', 'pointer-events-none');
+            xmpModalContent.classList.remove('scale-95');
+            xmpModalContent.classList.add('scale-100');
+        }
+
+        function hideXmpModal() {
+            xmpModal.classList.add('opacity-0', 'pointer-events-none');
+            xmpModalContent.classList.remove('scale-100');
+            xmpModalContent.classList.add('scale-95');
+        }
+
+        async function doCreateXmp(overwrite) {
+            hideXmpModal();
+            btnXmp.disabled = true;
+            btnXmpText.textContent = "生成中...";
+
+            const res = await window.electronAPI.createXmp(currentSourcePath, scanResults, overwrite);
+
+            if (res.success) {
+                btnXmpText.textContent = "✅ 标签已生成";
+                setTimeout(() => {
+                    btnXmpText.textContent = "创建xmp文件";
+                    btnXmp.disabled = false;
+                }, 3000);
+            } else {
+                showError("生成XMP失败: " + res.error);
+                btnXmpText.textContent = "创建xmp文件";
+                btnXmp.disabled = false;
+            }
+        }
+
+        btnXmp.addEventListener('click', async () => {
+            trackAction('click_xmp');
+
+            if (scanResults.length === 0) return;
+
+            btnXmp.disabled = true;
+            btnXmpText.textContent = "检查冲突...";
+
+            const fileNames = scanResults.map(r => r.fileName);
+            const res = await window.electronAPI.checkXmpConflict(currentSourcePath, fileNames);
+
+            btnXmp.disabled = false;
+            btnXmpText.textContent = "创建xmp文件";
+
+            if (res.conflict) {
+                showXmpModal();
+            } else {
+                doCreateXmp(false);
+            }
+        });
+
+        btnModalOverwrite.addEventListener('click', () => {
+            trackAction('click_xmp_overwrite');
+            doCreateXmp(true);
+        });
+
+        btnModalSkip.addEventListener('click', () => {
+            trackAction('click_xmp_skip');
+            doCreateXmp(false);
+        });
+
+        btnModalCancel.addEventListener('click', () => {
+            trackAction('click_xmp_cancel');
+            hideXmpModal();
         });
     </script>
 </body>
