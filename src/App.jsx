@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ConfigPanel from './components/ConfigPanel';
 import ProgressMonitor from './components/ProgressMonitor';
 import ActionBar from './components/ActionBar';
+import MasonryGallery from './components/MasonryGallery';
 import { Bridge } from './utils/bridge';
 
 export default function App() {
@@ -71,9 +72,8 @@ export default function App() {
                     statusMessage={statusMessage}
                 />
 
-                {/* Gallery Placeholder - to be implemented in Task 4 */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg min-h-[300px] flex items-center justify-center text-slate-500">
-                    Gallery UI Placeholder
+                <div className="mt-6 mb-24">
+                    <MasonryGallery photos={validPhotos} folderPath={folderPath} />
                 </div>
 
                 <ActionBar
