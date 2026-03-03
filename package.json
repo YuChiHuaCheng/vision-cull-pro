@@ -2,8 +2,9 @@
   "name": "vision-cull-pro",
   "version": "1.0.0",
   "description": "Local Event Photo Culler - local vision algorithms to discard blurred or closed-eye photos",
+  "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "NODE_ENV=development electron .",
     "dev": "vite",
     "build": "vite build",
     "pack:mac": "electron-builder --mac",
@@ -12,8 +13,7 @@
   "dependencies": {
     "lucide-react": "^0.576.0",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-window": "^2.2.7"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.4",
