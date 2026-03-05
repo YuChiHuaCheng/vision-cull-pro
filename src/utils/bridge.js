@@ -6,15 +6,29 @@ export const Bridge = {
         return { success: true, path: "/mock/macOS/Photos/Event" };
     },
 
-    startProcess: (path, threshold) => {
+    scanFiles: async (path, formatFilter) => {
+        if (window.electronAPI) return await window.electronAPI.scanFiles(path, formatFilter);
+        // Mock response for web dev mode
+        return {
+            success: true,
+            files: Array.from({ length: 150 }, (_, i) => `photo_${i + 1}.jpg`),
+            total: 150,
+            rawCount: 0,
+            jpgCount: 150,
+        };
+    },
+
+    startProcess: (path, threshold, formatFilter) => {
         if (window.electronAPI) {
-            window.electronAPI.startProcess(path, threshold);
+            window.electronAPI.startProcess(path, threshold, formatFilter);
         } else {
-            console.warn("Mock startProcess triggered:", path, threshold);
-            // Simulate fake progress for web mode testing
-            if (window.onMockProgress) {
-                window.onMockProgress();
-            }
+            console.warn("Mock startProcess:", path, threshold, formatFilter);
+        }
+    },
+
+    cancelProcess: () => {
+        if (window.electronAPI) {
+            window.electronAPI.cancelProcess();
         }
     },
 
@@ -32,11 +46,16 @@ export const Bridge = {
 
     copyFiles: async (sourcePath, fileNames) => {
         if (window.electronAPI) return await window.electronAPI.copyFiles(sourcePath, fileNames);
-        return { success: true };
+        return { success: true, copied: fileNames.length };
+    },
+
+    checkXmpConflict: async (sourcePath, fileNames) => {
+        if (window.electronAPI) return await window.electronAPI.checkXmpConflict(sourcePath, fileNames);
+        return { conflict: false, conflictCount: 0 };
     },
 
     createXmp: async (sourcePath, results, overwrite) => {
         if (window.electronAPI) return await window.electronAPI.createXmp(sourcePath, results, overwrite);
-        return { success: true };
-    }
+        return { success: true, created: results.length };
+    },
 };
