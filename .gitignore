@@ -9,3 +9,4 @@ build/
 release/
 *.spec
 fix_*.py
+.worktrees/
