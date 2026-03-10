@@ -102,7 +102,7 @@ export default function App() {
 
             <main className="flex-1 flex overflow-hidden">
                 {/* Left: Config Panel */}
-                <div className="w-[280px] bg-panel border-r border-border p-4 overflow-y-auto custom-scrollbar flex-shrink-0">
+                <div className="w-[300px] panel p-5">
                     <ConfigPanel
                         onStart={handleStartScan}
                         disabled={isScanning}
@@ -110,17 +110,19 @@ export default function App() {
 
                     {/* Cancel button during scan */}
                     {isScanning && (
-                        <button
-                            className="btn-danger w-full mt-3 text-xs"
-                            onClick={handleCancel}
-                        >
-                            取消分析
-                        </button>
+                        <div className="mt-8 border-t border-white/5 pt-4">
+                            <button
+                                className="btn-danger w-full text-xs"
+                                onClick={handleCancel}
+                            >
+                                HALT PROCESS
+                            </button>
+                        </div>
                     )}
                 </div>
 
                 {/* Middle: Progress Logs */}
-                <div className="w-[300px] bg-base border-r border-border flex flex-col overflow-hidden flex-shrink-0">
+                <div className="w-[340px] panel flex flex-col">
                     <ProgressMonitor
                         isScanning={isScanning}
                         progressTotal={progressTotal}
@@ -130,7 +132,7 @@ export default function App() {
                 </div>
 
                 {/* Right: Gallery */}
-                <div className="flex-1 bg-base flex flex-col overflow-hidden">
+                <div className="flex-1 bg-base flex flex-col overflow-hidden relative">
                     <MasonryGallery
                         photos={validPhotos}
                         folderPath={folderPath}

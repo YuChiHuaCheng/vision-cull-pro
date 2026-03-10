@@ -316,8 +316,11 @@ app.on('window-all-closed', function () {
 // IPC: Select Folder
 // ============================================================
 
-ipcMain.handle('dialog:openDirectory', async () => {
-    const { canceled, filePaths } = await dialog.showOpenDialog({
+ipcMain.handle('dialog:openDirectory', async (event) => {
+    const webContents = event.sender;
+    const window = BrowserWindow.fromWebContents(webContents);
+
+    const { canceled, filePaths } = await dialog.showOpenDialog(window, {
         properties: ['openDirectory', 'dontAddToRecent'],
         title: '选择照片文件夹',
         buttonLabel: '选择此文件夹'
@@ -425,13 +428,20 @@ ipcMain.on('process:start', async (event, targetPath, blurThreshold, formatFilte
         analyzerExecutable = path.join(process.resourcesPath, 'bin', 'analyzer');
         processArgs = [];
     } else {
-        const venvPython = path.join(__dirname, 'venv311', 'bin', 'python3');
-        if (fs.existsSync(venvPython)) {
-            analyzerExecutable = venvPython;
+        // Search for compatible Python venv with mediapipe
+        const venvCandidates = [
+            path.join(__dirname, '..', '.venv', 'bin', 'python3'),
+            path.join(__dirname, '.venv', 'bin', 'python3'),
+        ];
+        const foundPython = venvCandidates.find(p => fs.existsSync(p));
+        if (foundPython) {
+            analyzerExecutable = foundPython;
             processArgs = ['analyzer.py'];
+            console.log(`[Analyzer] Using Python: ${foundPython}`);
         } else {
             // Fallback: basic pass-through without analyzer (Phase 1 mock)
             analyzerExecutable = null;
+            console.log('[Analyzer] No compatible Python venv found, using pass-through mode');
         }
     }
 

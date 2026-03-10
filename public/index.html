@@ -13,72 +13,85 @@
             theme: {
                 extend: {
                     colors: {
-                        cyan: {
-                            400: '#22d3ee',
-                            500: '#06b6d4',
-                        },
-                        slate: {
-                            800: '#1e293b',
-                            900: '#0f172a',
-                            950: '#020617',
-                        }
+                        primary: '#18181B', // Zinc-900
+                        secondary: '#27272A', // Zinc-800
+                        cta: '#F8FAFC', // Slate-50
+                        base: '#000000', // Pure Black
                     },
                     fontFamily: {
                         mono: ['"SF Mono"', 'ui-monospace', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
-                        sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+                        sans: ['"Space Grotesk"', 'system-ui', '-apple-system', 'sans-serif'],
+                        heading: ['"Archivo"', 'system-ui', 'sans-serif']
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 6px rgba(0,0,0,0.1)',
+                        'hover': '0 10px 15px rgba(0,0,0,0.15)',
                     }
                 }
             }
         }
     </script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
         body {
-            background-color: #020617;
-            /* slate-950 */
-            background-image:
-                radial-gradient(circle at 15% 50%, rgba(34, 211, 238, 0.08), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.08), transparent 25%);
-            color: #e2e8f0;
+            background-color: #000000;
+            color: #FAFAFA;
         }
 
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+        /* Minimal flat panels instead of glass */
+        .flat-panel {
+            background-color: #18181B;
+            /* primary */
+            border: 1px solid #27272A;
+            /* secondary */
         }
 
-        /* Scroll panel isolation: prevents backdrop-filter parent from
-           triggering full-compositor repaint on every scroll frame.
-           Each panel becomes its own independent stacking context. */
+        .flat-input {
+            background-color: #000000;
+            border: 1px solid #27272A;
+            color: #FAFAFA;
+            transition: border-color 200ms ease;
+        }
+
+        .flat-input:focus {
+            border-color: #F8FAFC;
+            outline: none;
+        }
+
+        /* Scroll panel isolation */
         .scroll-isolated {
             isolation: isolate;
             contain: strict;
             position: relative;
         }
 
-        .text-glow {
-            text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+        .btn-cta {
+            background-color: #F8FAFC;
+            color: #000000;
+            transition: all 200ms ease;
         }
 
-        .btn-glow {
-            box-shadow: 0 0 15px rgba(34, 211, 238, 0.3);
-            transition: all 0.3s ease;
+        .btn-cta:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-1px);
         }
 
-        .btn-glow:hover:not(:disabled) {
-            box-shadow: 0 0 25px rgba(34, 211, 238, 0.6);
+        .btn-cta:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #27272A;
+            color: #71717A;
         }
 
         .log-item {
-            animation: fadeIn 0.3s ease-in-out;
+            animation: fadeIn 0.2s ease-in-out;
         }
 
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(5px);
+                transform: translateY(2px);
             }
 
             to {
@@ -87,330 +100,228 @@
             }
         }
 
-        /* Custom scrollbar */
+        /* Minimal scrollbar */
         ::-webkit-scrollbar {
-            width: 8px;
+            width: 4px;
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 4px;
+            background: #000000;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(34, 211, 238, 0.3);
-            border-radius: 4px;
+            background: #27272A;
+            border-radius: 2px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(34, 211, 238, 0.5);
+            background: #3F3F46;
         }
     </style>
 </head>
 
-<body
-    class="min-h-screen font-sans bg-[#020617] text-slate-200 selection:bg-cyan-500/30 flex flex-col items-center justify-center p-4">
+<body class="min-h-screen font-sans bg-base text-zinc-100 selection:bg-zinc-800 flex flex-col items-center p-4 md:p-8">
 
-    <!-- Main Application Window -->
-    <div class="w-full max-w-[1400px] glass-panel text-slate-200 rounded-2xl relative overflow-hidden flex flex-col"
-        style="height: 85vh; min-height: 700px;">
-
-        <!-- Decorative Grid Background -->
-        <div class="absolute inset-0 z-0 opacity-[0.02] pointer-events-none"
-            style="background-image: linear-gradient(#22d3ee 1px, transparent 1px), linear-gradient(90deg, #22d3ee 1px, transparent 1px); background-size: 40px 40px;">
+    <!-- Minimal Header -->
+    <header class="w-full px-4 md:px-8 py-6 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-heading font-bold tracking-tight text-white flex items-center gap-2">
+                Vision<span class="text-zinc-500 font-normal">Cull</span>
+                <span
+                    class="text-xs ml-1 bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full font-sans align-top">Pro</span>
+            </h1>
         </div>
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-secondary bg-primary">
+            <span class="w-2 h-2 rounded-full bg-zinc-400"></span>
+            <span class="text-xs font-medium text-zinc-300">Local Engine Ready</span>
+        </div>
+    </header>
 
-        <!-- Header / Toolbar -->
-        <header
-            class="relative z-10 border-b border-white/5 bg-slate-900/40 backdrop-blur-md px-8 py-5 flex items-center justify-between shadow-sm flex-shrink-0">
-            <div class="flex items-center gap-4">
-                <div
-                    class="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.15)]">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </div>
-                <div>
-                    <h1 class="text-xl font-bold tracking-wide text-white drop-shadow-md">
-                        Vision<span class="text-cyan-400 font-normal">Cull</span> Pro
-                    </h1>
-                    <p class="text-slate-500 mt-0.5 text-[10px] font-mono uppercase tracking-widest">本地 AI 视觉引擎</p>
-                </div>
-            </div>
+    <!-- Main Container -->
+    <main class="w-full px-4 md:px-8 flex-1 flex flex-col md:flex-row gap-6 pb-6 h-[calc(100vh-100px)] overflow-hidden">
 
-            <div class="flex items-center gap-3">
-                <div
-                    class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    引擎就绪
-                </div>
-            </div>
-        </header>
-
-        <!-- Main Workspace -->
-        <main class="relative z-10 flex-1 flex flex-col md:flex-row overflow-hidden">
-
-            <!-- Left Panel: Controls (Sidebar) -->
-            <div
-                class="scroll-isolated w-full md:w-[380px] bg-black/20 border-r border-white/5 flex flex-col p-6 overflow-y-auto custom-scrollbar flex-shrink-0">
-
-                <h2
-                    class="text-xs font-mono text-slate-500 uppercase tracking-widest mb-6 border-b border-white/5 pb-2">
-                    终端配置</h2>
-                <!-- Target Selection Box -->
-                <div class="mb-8 group">
-                    <label
-                        class="block text-[11px] font-mono text-cyan-500/80 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                        </svg>
-                        源文件夹路径
-                    </label>
-
-                    <div
-                        class="relative bg-slate-900/60 rounded-xl border border-slate-700/60 p-1 flex flex-col gap-2 transition-all hover:border-cyan-500/30">
-                        <div class="relative w-full">
-                            <input type="text" id="folder-path" readonly placeholder="点击下方按钮选择路径..."
-                                class="w-full bg-transparent text-slate-300 text-sm py-2.5 px-3 focus:outline-none cursor-pointer truncate font-mono placeholder-slate-600">
-                        </div>
-
+        <!-- Left Column: Settings and Logs -->
+        <div class="w-full md:w-[400px] flex flex-col gap-6 shrink-0 h-full overflow-y-auto custom-scrollbar pr-2 pb-8">
+            <!-- Hero Box: Configuration -->
+            <section class="w-full flat-panel rounded-2xl p-6 flex flex-col gap-8">
+                <!-- Part 1: Source Folder -->
+                <div class="flex flex-col gap-4">
+                    <label class="text-sm font-medium text-zinc-400">01. Select Source Directory</label>
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <input type="text" id="folder-path" readonly placeholder="Click browse to select a folder..."
+                            class="flex-1 flat-input rounded-xl px-4 py-3 cursor-pointer text-sm truncate placeholder-zinc-600 transition-colors hover:border-zinc-500">
                         <button id="select-btn"
-                            class="w-full py-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-sm rounded-lg border border-slate-600/50 hover:border-cyan-500/50 transition-colors flex justify-center items-center gap-2">
-                            <svg class="h-4 w-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            class="px-6 py-3 rounded-xl border border-secondary bg-[#000000] hover:bg-zinc-800 text-sm font-medium transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
+                            <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                                    d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z">
+                                </path>
                             </svg>
-                            浏览本地文件
+                            Browse Folders
                         </button>
                     </div>
                 </div>
 
-                <!-- Settings Area -->
+                <hr class="border-secondary">
+
+                <!-- Part 2: Vision Threshold -->
                 <div class="flex flex-col gap-4">
-                    <label
-                        class="block text-[11px] font-mono text-cyan-500/80 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
-                            </path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                        算法判定参数
-                    </label>
+                    <div class="flex items-center justify-between">
+                        <label class="text-sm font-medium text-zinc-400">02. Vision Strictness</label>
+                        <span class="font-heading text-2xl font-bold" id="threshold-val">200</span>
+                    </div>
 
-                    <div class="bg-slate-900/60 p-5 rounded-xl border border-slate-700/60">
-                        <div class="flex justify-between items-end mb-3">
-                            <span class="text-sm font-medium text-slate-300">清晰度阈值 (Blur Threshold)</span>
-                            <span class="font-mono text-lg text-cyan-400 text-glow" id="threshold-val">200</span>
+                    <input type="range" id="blur-threshold" min="0" max="800" step="10" value="200"
+                        class="w-full h-1 bg-zinc-800 rounded-full appearance-none cursor-pointer hover:bg-zinc-700 transition-colors focus:outline-none accent-zinc-200 my-4">
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div id="tier-1"
+                            class="p-4 rounded-xl border border-secondary bg-base transition-colors duration-200">
+                            <h4 class="text-sm font-semibold text-zinc-200 mb-2">Casual (0-300)</h4>
+                            <p class="text-xs text-zinc-500 leading-relaxed">Relaxed standard. Permits slight motion
+                                blur
+                                and shallow depth of field. Best for lifestyle and events.</p>
                         </div>
-
-                        <input type="range" id="blur-threshold" min="0" max="800" step="10" value="200"
-                            class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500 hover:accent-cyan-400 transition-colors focus:outline-none mb-6">
-
-                        <div class="space-y-3">
-                            <div id="tier-1"
-                                class="p-3 bg-black/40 rounded-lg border border-white/5 transition-all duration-300">
-                                <h4
-                                    class="text-xs font-semibold text-slate-300 mb-1 flex justify-between transition-colors duration-300">
-                                    <span>日常偏好 (0 - 300)</span>
-                                    <span class="text-slate-500">手机拍摄 / 截屏影像</span>
-                                </h4>
-                                <p class="text-[11px] text-slate-500 leading-tight transition-colors duration-300">
-                                    较宽松标准。允许少许动态模糊与轻微失焦。</p>
-                            </div>
-                            <div id="tier-2"
-                                class="p-3 bg-cyan-900/10 rounded-lg border border-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.1)] transition-all duration-300">
-                                <h4
-                                    class="text-xs font-semibold text-cyan-400 mb-1 flex justify-between transition-colors duration-300">
-                                    <span>优享画质 (300 - 500)</span>
-                                    <span class="text-slate-500">单反直出</span>
-                                </h4>
-                                <p class="text-[11px] text-slate-400 leading-tight transition-colors duration-300">
-                                    严格标准。要求边缘清晰无明显拉丝。强烈推荐日常挑片使用。</p>
-                            </div>
-                            <div id="tier-3"
-                                class="p-3 bg-black/40 rounded-lg border border-white/5 transition-all duration-300">
-                                <h4
-                                    class="text-xs font-semibold text-slate-300 mb-1 flex justify-between transition-colors duration-300">
-                                    <span>专业影棚 (500+)</span>
-                                    <span class="text-slate-500">影棚灯光 / 三脚架</span>
-                                </h4>
-                                <p class="text-[11px] text-slate-500 leading-tight transition-colors duration-300">
-                                    极强标准。仅放行如同刀锋般锐利的定格影像。</p>
-                            </div>
+                        <div id="tier-2"
+                            class="p-4 rounded-xl border border-zinc-500 bg-primary transition-colors duration-200">
+                            <h4 class="text-sm font-semibold text-white mb-2">Standard (300-500)</h4>
+                            <p class="text-xs text-zinc-400 leading-relaxed">Strict quality control. Demands sharp edges
+                                and
+                                clear focus points. Recommended for professional delivery.</p>
+                        </div>
+                        <div id="tier-3"
+                            class="p-4 rounded-xl border border-secondary bg-base transition-colors duration-200">
+                            <h4 class="text-sm font-semibold text-zinc-200 mb-2">Studio (500+)</h4>
+                            <p class="text-xs text-zinc-500 leading-relaxed">Extreme strictness. Only accepts
+                                razor-sharp
+                                imagery, typically shot with strobes and tripods.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Action Button -->
-                <div class="mt-auto pt-6 border-t border-white/5">
+                <!-- Start Action & Errors -->
+                <div class="pt-4 flex flex-col items-center">
                     <p id="error-msg"
-                        class="text-rose-400 text-xs mb-3 hidden font-mono flex items-center justify-center gap-2">
-                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        class="text-red-400 text-sm mb-4 hidden font-medium flex items-center justify-center gap-2">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span></span>
                     </p>
 
                     <button id="start-btn" disabled
-                        class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold py-4 px-6 rounded-xl btn-glow disabled:opacity-50 disabled:cursor-not-allowed disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 disabled:shadow-none flex justify-center items-center gap-3 transition-all duration-300">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
-                            </path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <span class="tracking-widest uppercase text-sm">开始执行扫描</span>
+                        class="btn-cta w-full md:w-auto md:min-w-[300px] text-lg rounded-xl py-4 flex items-center justify-center gap-2 font-heading tracking-wide">
+                        Begin Inference Analysis
                     </button>
                 </div>
-            </div>
+            </section>
 
-            <!-- Middle Panel: Output & Terminal -->
+            <!-- Analysis Log -->
             <div
-                class="w-full md:w-[350px] lg:w-[400px] bg-black/40 border-r border-white/5 flex flex-col p-6 flex-shrink-0">
+                class="w-full flat-panel rounded-2xl flex flex-col overflow-hidden border-secondary shrink-0 min-h-[300px]">
+                <div class="p-4 border-b border-secondary flex justify-between items-center bg-black/50">
+                    <h3 class="text-xs font-semibold uppercase tracking-widest text-zinc-400">Engine Output</h3>
+                    <span id="progress-text" class="text-xs font-medium text-white hidden">0 / 0</span>
+                </div>
 
-                <h2
-                    class="text-xs font-mono text-slate-500 uppercase tracking-widest mb-6 border-b border-white/5 pb-2 flex justify-between">
-                    <span>处理日志终端</span>
-                    <span id="progress-text" class="text-cyan-500 font-bold hidden">0 / 0</span>
-                </h2>
-
-                <!-- Progress Area -->
-                <div id="progress-area" class="mb-6 hidden shrink-0">
-                    <div
-                        class="w-full bg-slate-900/80 rounded-full h-1.5 overflow-hidden border border-slate-800 shadow-inner">
-                        <div id="progress-bar"
-                            class="bg-gradient-to-r from-cyan-500 to-blue-500 h-1.5 rounded-full shadow-[0_0_10px_#22d3ee] transition-all duration-300 ease-out"
-                            style="width: 0%"></div>
+                <div id="progress-area" class="w-full bg-base h-0.5 hidden shrink-0">
+                    <div id="progress-bar" class="bg-white h-0.5 transition-all duration-300" style="width: 0%">
                     </div>
                 </div>
 
-                <!-- Log Area -->
-                <div
-                    class="flex-1 bg-[#090b14] border border-slate-800/80 rounded-xl p-5 overflow-hidden relative shadow-inner group">
-                    <div class="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onclick="document.getElementById('log-list').innerHTML=''"
-                            class="text-xs text-slate-500 hover:text-slate-300 font-mono transition-colors">清空屏幕</button>
-                    </div>
+                <div class="flex-1 p-4 bg-base/50 relative">
                     <ul id="log-list"
-                        class="scroll-isolated space-y-2.5 text-[13px] font-mono h-full overflow-y-auto custom-scrollbar pr-2 pb-4">
-                        <li class="text-slate-600 flex items-center gap-2">
-                            <span>></span>
-                            <span>系统已初始化。等待下发配置任务...</span>
+                        class="scroll-isolated space-y-2 text-xs font-mono h-full overflow-y-auto custom-scrollbar pr-2 text-zinc-500">
+                        <li class="flex items-start gap-2">
+                            <span class="opacity-50">></span>
+                            <span>System ready. Waiting for task configuration.</span>
                         </li>
                     </ul>
                 </div>
             </div>
+        </div> <!-- End Left Column -->
 
-            <!-- Right Panel: Live Photo Gallery -->
-            <div class="flex-1 bg-[#050810] flex flex-col p-6 overflow-hidden relative">
-                <h2
-                    class="text-xs font-mono text-slate-500 uppercase tracking-widest mb-6 border-b border-white/5 pb-2 flex justify-between items-center z-10 relative">
-                    <span class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        已通过鉴定的影像
-                    </span>
-                    <span id="gallery-count"
-                        class="text-emerald-500/80 font-mono text-[11px] bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">0</span>
-                </h2>
+        <!-- Right Column (Gallery Flow) -->
+        <div
+            class="flex-1 flex flex-col relative h-full bg-[#18181B] border border-secondary rounded-2xl overflow-hidden p-6 pb-24">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-heading font-semibold">Verified Kept Dataset</h3>
+                <span id="gallery-count"
+                    class="bg-primary border border-secondary text-zinc-300 px-3 py-1 rounded-full text-sm font-medium">0</span>
+            </div>
 
-                <div class="scroll-isolated flex-1 overflow-y-auto custom-scrollbar pr-2 z-10" id="gallery-container">
-                    <div id="gallery-empty-state"
-                        class="absolute inset-0 flex flex-col items-center justify-center text-slate-600/50">
-                        <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
-                            </path>
-                        </svg>
-                        <p class="text-sm font-mono tracking-widest uppercase">等待数据流注入...</p>
-                    </div>
-
-                    <!-- CSS Grid for the waterfall -->
-                    <div id="gallery-grid" class="grid grid-cols-2 xl:grid-cols-3 gap-4 auto-rows-max hidden mb-24">
-                        <!-- Images will be injected here -->
-                    </div>
+            <div class="scroll-isolated flex-1 min-h-[400px] rounded-2xl border border-dashed border-secondary flex flex-col"
+                id="gallery-container">
+                <div id="gallery-empty-state" class="flex-1 flex flex-col items-center justify-center text-zinc-600">
+                    <svg class="w-12 h-12 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    <p class="text-sm font-medium">Awaiting Data Stream</p>
                 </div>
 
-                <!-- Inner subtle gradient -->
-                <div
-                    class="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#020617] via-transparent to-transparent opacity-50 z-20">
-                </div>
-
-                <!-- NEW: Action Bar (Absolute bottom) -->
-                <div id="action-bar"
-                    class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#020617] via-[#020617]/95 to-transparent z-30 transform translate-y-full opacity-0 pointer-events-none transition-all duration-500 flex justify-center gap-3">
-                    <button id="btn-copy"
-                        class="px-5 py-2.5 bg-cyan-600/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-400 font-medium rounded-xl text-sm btn-glow disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2">
-                            </path>
-                        </svg>
-                        <span id="btn-copy-text" class="tracking-wider">复制至新文件夹</span>
-                    </button>
-
-                    <button id="btn-xmp"
-                        class="px-5 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-medium rounded-xl text-sm transition-all flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z">
-                            </path>
-                        </svg>
-                        <span id="btn-xmp-text" class="tracking-wider">创建xmp文件</span>
-                    </button>
-
-                    <button id="btn-cancel"
-                        class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium rounded-xl text-sm transition-all flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                        <span class="tracking-wider">取消</span>
-                    </button>
+                <!-- Gallery Grid -->
+                <div id="gallery-grid"
+                    class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-max hidden p-6">
+                    <!-- Img injected here -->
                 </div>
             </div>
 
-        </main>
-    </div>
+            <!-- Floating Bottom Actions (Shows only when done) -->
+            <div id="action-bar"
+                class="fixed bottom-8 left-1/2 -translate-x-1/2 flat-panel shadow-hover rounded-2xl p-4 z-40 transform translate-y-24 opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-3">
+
+                <button id="btn-copy"
+                    class="px-6 py-3 bg-white text-black font-semibold rounded-xl text-sm transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 whitespace-nowrap">
+                    <span id="btn-copy-text" class="tracking-wide">Copy to safe folder</span>
+                </button>
+
+                <button id="btn-xmp"
+                    class="px-6 py-3 border border-secondary text-white font-medium rounded-xl text-sm transition-all hover:bg-secondary active:scale-95 disabled:opacity-50 whitespace-nowrap">
+                    <span id="btn-xmp-text" class="tracking-wide">Write .XMP Labels</span>
+                </button>
+
+                <button id="btn-cancel"
+                    class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-secondary text-zinc-400 hover:text-white transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+        </div> <!-- End Right Column -->
+    </main>
 
     <!-- XMP Conflict Modal -->
     <div id="xmp-modal"
         class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6 max-w-md w-full relative z-10 transform scale-95 transition-transform duration-300"
+        <div class="absolute inset-0 bg-base/80 backdrop-blur-sm"></div>
+        <div class="flat-panel border border-secondary rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 relative z-10 transform scale-95 transition-transform duration-300"
             id="xmp-modal-content">
-            <div class="flex items-center gap-3 mb-4 text-amber-400">
+            <div class="flex items-center gap-3 mb-4 text-white">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
                     </path>
                 </svg>
-                <h3 class="text-lg font-bold tracking-wider">XMP 标签文件冲突</h3>
+                <h3 class="text-xl font-heading font-semibold">Metadata Conflict Warning</h3>
             </div>
-            <p class="text-slate-300 text-sm mb-6 leading-relaxed">检测到部分照片已存在 XMP 标签文件。请选择处理方式：</p>
+            <p class="text-zinc-400 text-sm mb-8 leading-relaxed">We detected that some photos already have pre-existing
+                .XMP labels. Please confirm how you'd like to proceed:</p>
             <div class="flex flex-col gap-3">
                 <button id="modal-btn-overwrite"
-                    class="w-full py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-sm font-medium transition-colors">
-                    ⚠️ 覆盖原文件 (Overwrite)
+                    class="w-full py-4 bg-white text-black font-semibold rounded-xl text-sm transition-colors hover:bg-zinc-200">
+                    Replace All Labels (Overwrite)
                 </button>
                 <button id="modal-btn-skip"
-                    class="w-full py-3 bg-cyan-600/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/50 rounded-xl text-sm font-medium transition-colors">
-                    ✅ 保留原文件，仅跳过冲突项 (Skip)
+                    class="w-full py-4 border border-secondary text-zinc-300 rounded-xl text-sm font-medium transition-colors hover:bg-zinc-800">
+                    Skip Existing (Safe Mode)
                 </button>
                 <button id="modal-btn-cancel"
-                    class="mt-2 text-slate-500 hover:text-slate-300 text-sm font-medium">取消操作</button>
+                    class="mt-4 text-zinc-500 hover:text-white text-sm font-medium transition-colors">Cancel Op</button>
             </div>
         </div>
     </div>
@@ -476,13 +387,13 @@
         const tier2 = document.getElementById('tier-2');
         const tier3 = document.getElementById('tier-3');
 
-        const baseClass = "p-3 rounded-lg transition-all duration-300 bg-black/40 border border-white/5";
-        const baseTitle = "text-xs font-semibold mb-1 flex justify-between transition-colors duration-300 text-slate-300";
-        const baseText = "text-[11px] leading-tight transition-colors duration-300 text-slate-500";
+        const baseClass = "p-4 rounded-xl border border-secondary bg-base transition-colors duration-200";
+        const baseTitle = "text-sm font-semibold text-zinc-400 mb-2";
+        const baseText = "text-xs text-zinc-600 leading-relaxed";
 
-        const activeClass = "p-3 rounded-lg transition-all duration-300 bg-cyan-900/10 border border-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.1)]";
-        const activeTitle = "text-xs font-semibold mb-1 flex justify-between transition-colors duration-300 text-cyan-400";
-        const activeText = "text-[11px] leading-tight transition-colors duration-300 text-slate-400";
+        const activeClass = "p-4 rounded-xl border border-zinc-400 bg-primary transition-colors duration-200";
+        const activeTitle = "text-sm font-semibold text-white mb-2 transition-colors";
+        const activeText = "text-xs text-zinc-300 leading-relaxed transition-colors";
 
         function updateTierHighlight(val) {
             // Reset all
@@ -532,19 +443,19 @@
 
             const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-            let colorCls = 'text-slate-300';
-            let contentCls = 'text-slate-400';
+            let colorCls = 'text-zinc-500';
+            let contentCls = 'text-zinc-400';
 
             if (status === 'success') {
-                contentCls = 'text-emerald-400';
+                contentCls = 'text-white';
             } else if (status === 'error') {
-                contentCls = 'text-rose-400';
+                contentCls = 'text-zinc-500 line-through';
             } else if (status === 'highlight') {
-                contentCls = 'text-cyan-300';
+                contentCls = 'text-zinc-200 font-bold';
             }
 
             li.innerHTML = `
-                <span class="text-slate-600 shrink-0 select-none mr-2">[${time}]</span>
+                <span class="text-zinc-600 shrink-0 select-none mr-1.5">[${time}]</span>
                 <span class="${contentCls}">${text}</span>
             `;
 
@@ -566,13 +477,13 @@
             selectBtn.disabled = true;
             const originalHtml = selectBtn.innerHTML;
             selectBtn.innerHTML = `
-                <svg class="animate-spin h-4 w-4 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor"
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                     </path>
                 </svg>
-                等待系统响应...
+                Processing...
             `;
             hideError();
 
@@ -605,7 +516,7 @@
         btn.addEventListener('click', () => {
             const path = input.value.trim();
             if (!path) {
-                showError("处理未就绪，请先选择目标文件夹。");
+                showError("Please pick a source folder first.");
                 return;
             }
             hideError();
@@ -619,14 +530,14 @@
 
             const originalBtnHtml = btn.innerHTML;
             btn.innerHTML = `
-            <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+            <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none"
                 viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor"
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                 </path>
             </svg>
-            <span class="tracking-widest uppercase text-sm">正在深度分析...</span>
+            <span class="tracking-wide uppercase text-sm">Deep Processing...</span>
             `;
 
             progressArea.classList.remove('hidden');
@@ -642,11 +553,11 @@
             scanResults = [];
             currentSourcePath = path;
 
-            // Hide action bar
+            // Hide action bar 
             actionBar.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
-            actionBar.classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
+            actionBar.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
 
-            addLog('🔗 建立本地推断引擎连接中...', 'highlight');
+            addLog('Starting python analyzer daemon...', 'highlight');
 
             // Set up IPC receiver
             const threshold = blurThresholdSlider.value;
@@ -681,16 +592,15 @@
 
                         if (data.originalPath) {
                             const imgContainer = document.createElement('div');
-                            imgContainer.className = 'group relative aspect-square rounded-xl overflow-hidden border border-white/5 bg-slate-900/50 shadow-lg animation-fadeIn';
+                            imgContainer.className = 'group relative aspect-square rounded-[1rem] overflow-hidden bg-primary animation-fadeIn';
                             // Encode URL to handle spaces/special characters, prefix with custom protocol
                             const safeURL = "local://" + data.originalPath.split(path.sep).join('/');
 
                             imgContainer.innerHTML = `
-                                <img src="${safeURL}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy">
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-                                    <p class="text-[10px] text-white font-mono truncate w-full" title="${data.fileName}">${data.fileName}</p>
+                                <img src="${safeURL}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy">
+                                <div class="absolute inset-0 bg-base/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center p-3">
+                                    <p class="text-xs text-white font-mono break-all text-center px-4">${data.fileName}</p>
                                 </div>
-                                <div class="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
                             `;
                             // Prepend to make newest appear at the top
                             galleryGrid.prepend(imgContainer);
@@ -724,7 +634,7 @@
 
                 // Show Action bar if we have results
                 if (scanResults.length > 0) {
-                    actionBar.classList.remove('translate-y-full', 'opacity-0', 'pointer-events-none');
+                    actionBar.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
                     actionBar.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
                 }
             }

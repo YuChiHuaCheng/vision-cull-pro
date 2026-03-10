@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,142 +6,161 @@
 
 @layer base {
   body {
-    background-color: #111111;
-    color: #e5e5e5;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: theme('colors.base');
+    color: theme('colors.text-primary');
+    font-family: theme('fontFamily.sans');
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   ::selection {
-    background-color: rgba(96, 165, 250, 0.25);
-    color: #fff;
+    background-color: theme('colors.accent-dim');
+    color: theme('colors.accent');
+  }
+
+  /* Custom minimal scrollbar for a technical feel */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: theme('colors.panel');
+    border-left: 1px solid theme('colors.border');
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: theme('colors.border-hover');
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.text-muted');
   }
 }
 
 @layer components {
 
-  /* ==== Buttons ==== */
   .btn-primary {
-    @apply px-4 py-2 bg-accent text-white text-sm font-medium rounded-lg transition-all duration-200 hover:bg-blue-500 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-accent;
+    @apply px-4 py-2 bg-accent text-white text-sm font-medium rounded-md transition-colors hover:bg-blue-500 active:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   }
 
   .btn-secondary {
-    @apply px-4 py-2 bg-surface text-text-secondary text-sm font-medium rounded-lg border border-border transition-all duration-200 hover:bg-border hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply px-4 py-2 bg-surface text-text-primary text-sm font-medium rounded-md border border-border transition-colors hover:bg-border disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-danger {
-    @apply px-4 py-2 bg-status-reject-dim text-status-reject text-sm font-medium rounded-lg border border-status-reject/20 transition-all duration-200 hover:bg-status-reject/20 hover:border-status-reject/40;
+    @apply px-4 py-2 bg-status-reject-dim text-status-reject text-sm font-medium rounded-md border border-status-reject/20 transition-colors hover:bg-status-reject/20;
   }
 
   .btn-success {
-    @apply px-4 py-2 bg-status-keep-dim text-status-keep text-sm font-medium rounded-lg border border-status-keep/20 transition-all duration-200 hover:bg-status-keep/20 hover:border-status-keep/40;
+    @apply px-4 py-2 bg-status-keep-dim text-status-keep text-sm font-medium rounded-md border border-status-keep/20 transition-colors hover:bg-status-keep/20;
   }
 
-  /* ==== Inputs ==== */
+  /* ---- Inputs: Standard inputs ---- */
   .input-field {
-    @apply bg-surface border border-border text-text-primary px-3 py-2 rounded-lg text-sm outline-none transition-all duration-200 focus:border-accent focus:ring-1 focus:ring-accent/30 placeholder:text-text-muted;
+    @apply bg-surface border border-border text-text-primary px-3 py-2 rounded-md text-sm font-sans outline-none transition-all duration-150 focus:border-accent focus:ring-1 focus:ring-accent/50 placeholder:text-text-muted;
   }
 
-  /* ==== Cards ==== */
+  /* ---- Panels / Containers ---- */
+  .panel {
+    @apply bg-panel border-r border-border overflow-y-auto flex-shrink-0;
+  }
+
   .card {
-    @apply bg-panel border border-border rounded-xl overflow-hidden;
+    @apply bg-surface border border-border rounded-md overflow-hidden;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   }
 
-  /* ==== Photo Grid Card ==== */
   .photo-card {
-    @apply relative overflow-hidden rounded-lg bg-surface border border-transparent transition-all duration-200 cursor-pointer hover:border-border-hover;
+    @apply relative overflow-hidden bg-base border border-transparent transition-all duration-150 cursor-pointer rounded-md hover:border-border-hover;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   }
 
-  .photo-card .status-badge {
-    @apply absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold z-10 backdrop-blur-sm;
+  .photo-card.selected {
+    @apply border-accent ring-1 ring-accent z-10;
   }
 
-  .photo-card .status-badge.keep {
-    @apply bg-status-keep/80 text-white;
+  .status-badge {
+    @apply absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-xs font-medium z-10 backdrop-blur-md rounded-full border border-white/10 opacity-90 transition-opacity group-hover:opacity-100;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   }
 
-  .photo-card .status-badge.reject {
-    @apply bg-status-reject/80 text-white;
+  .status-badge.keep {
+    @apply bg-status-keep/90 text-white border-status-keep/50;
   }
 
-  .photo-card .status-badge.fail {
-    @apply bg-status-fail/80 text-white;
+  .status-badge.reject {
+    @apply bg-status-reject/90 text-white border-status-reject/50;
   }
 
-  /* ==== Status Bar ==== */
-  .status-bar {
-    @apply flex items-center gap-4 px-4 py-2 bg-panel border-t border-border text-xs text-text-muted font-mono;
+  .status-badge.fail {
+    @apply bg-status-fail/90 text-white border-status-fail/50;
   }
 
-  .status-bar .stat {
-    @apply flex items-center gap-1.5;
+  /* ---- Terminals / Status Bars ---- */
+  .terminal-bar {
+    @apply flex items-center gap-6 px-4 py-2 flex-wrap bg-panel border-t border-border text-[11px] font-sans text-text-muted;
   }
 
-  .status-bar .stat .dot {
-    @apply w-2 h-2 rounded-full;
+  .terminal-stat {
+    @apply flex items-center gap-2;
   }
 
-  /* ==== Filter Tabs ==== */
+  .terminal-stat .dot {
+    @apply w-1.5 h-1.5 rounded-full;
+  }
+
+  /* ---- Filter Tabs : Standard pills ---- */
   .filter-tab {
-    @apply px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-150 text-text-muted hover:text-text-secondary hover:bg-surface cursor-pointer;
+    @apply px-4 py-1.5 text-xs font-medium rounded-full transition-colors text-text-secondary hover:text-text-primary hover:bg-surface cursor-pointer;
   }
 
   .filter-tab.active {
-    @apply bg-surface text-text-primary border border-border;
+    @apply bg-surface text-accent;
   }
 
-  /* ==== Checkbox ==== */
+  /* ---- Checkbox ---- */
   .checkbox-group label {
     @apply flex items-center gap-2 text-sm text-text-secondary cursor-pointer select-none transition-colors hover:text-text-primary;
   }
 
   .checkbox-group input[type="checkbox"] {
-    @apply w-4 h-4 rounded border-border bg-surface text-accent focus:ring-accent/30 focus:ring-2 focus:ring-offset-0 cursor-pointer accent-accent;
+    @apply appearance-none w-4 h-4 border border-border bg-surface text-accent rounded focus:ring-accent/50 focus:ring-2 focus:ring-offset-2 focus:ring-offset-base cursor-pointer hover:border-text-muted transition-colors relative;
   }
 
-  /* ==== Progress ==== */
+  .checkbox-group input[type="checkbox"]:checked {
+    @apply bg-accent border-accent;
+  }
+
+  .checkbox-group input[type="checkbox"]:checked::after {
+    content: '✓';
+    @apply absolute inset-0 flex items-center justify-center text-white text-[10px] font-bold;
+  }
+
+  /* ---- Progress Monitor ---- */
   .progress-bar {
     @apply w-full h-1.5 bg-surface rounded-full overflow-hidden;
   }
 
   .progress-bar .fill {
-    @apply h-full bg-accent rounded-full transition-all duration-300 ease-out;
+    @apply h-full bg-accent transition-all duration-200 ease-out rounded-full;
   }
 
-  /* ==== Scrollbar ==== */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-border-hover;
-  }
-
-  /* ==== Lightbox ==== */
+  /* ---- Lightbox : Softer overlay ---- */
   .lightbox-overlay {
-    @apply fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center animate-fade-in;
+    @apply fixed inset-0 z-50 bg-base/90 backdrop-blur-sm flex items-center justify-center animate-fade-in;
   }
 
-  /* ==== Scroll isolation ==== */
-  .scroll-isolated {
-    isolation: isolate;
-    contain: layout style;
-    position: relative;
+  /* ---- Logs & Output ---- */
+  .log-line {
+    @apply font-mono text-[11px] leading-relaxed break-all border-b border-border/50 pb-1.5;
   }
 }
 
-/* ==== Keyboard hint ==== */
+/* ---- Generic Elements ---- */
 kbd {
-  @apply inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-mono font-medium bg-surface border border-border rounded text-text-muted;
+  @apply inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-sans font-medium bg-surface border border-border text-text-secondary rounded uppercase;
 }
