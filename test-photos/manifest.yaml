@@ -1,0 +1,15 @@
+name: bird-tagger-ai
+description: "AI-powered bird photo organizer and tagger. Extracts image previews and uses Vision models to identify bird species, then either physically organizes them into taxonomy folders or natively injects XMP tags."
+version: 1.0.0
+language: nodejs
+entrypoint: index.js
+parameters:
+  target_directory:
+    type: string
+    description: "The absolute path to the folder containing the photos to process."
+    required: true
+  execution_mode:
+    type: string
+    description: "The execution mode: 'xmp' for non-destructive XMP sidecar generation, or 'organize' for physical folder organization."
+    required: true
+    enum: ["xmp", "organize"]

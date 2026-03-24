@@ -18,11 +18,11 @@ export const Bridge = {
         };
     },
 
-    startProcess: (path, threshold, formatFilter) => {
+    startProcess: (path, threshold, formatFilter, aiConfig) => {
         if (window.electronAPI) {
-            window.electronAPI.startProcess(path, threshold, formatFilter);
+            window.electronAPI.startProcess(path, threshold, formatFilter, aiConfig);
         } else {
-            console.warn("Mock startProcess:", path, threshold, formatFilter);
+            console.warn("Mock startProcess:", path, threshold, formatFilter, aiConfig);
         }
     },
 

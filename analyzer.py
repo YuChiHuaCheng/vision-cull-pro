@@ -4,6 +4,7 @@ import cv2
 import mediapipe as mp
 import math
 import os
+import base64
 
 # Suppress verbose TF/MediaPipe logging
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -23,13 +24,14 @@ def process_image(img_path, blur_threshold, face_mesh):
     # Read the image
     img = cv2.imread(img_path)
     if img is None:
-        return {"keep": False, "reason": "无法读取图片文件"}
+        return {"keep": False, "reason": "无法读取图片文件", "faces": []}
 
     h, w, _ = img.shape
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
     results = face_mesh.process(img_rgb)
+    response_faces = []
     
     if results.multi_face_landmarks:
         faces_clear = False
@@ -41,7 +43,7 @@ def process_image(img_path, blur_threshold, face_mesh):
         RIGHT_EYE = [33, 160, 158, 133, 153, 144]
         
         for face_landmarks in results.multi_face_landmarks:
-            # 1. Blur Detection exclusively on the Face ROI (Resolves Bokeh background blur issues rejecting clear portraits)
+            # 1. Blur Detection exclusively on the Face ROI
             x_coords = [lm.x for lm in face_landmarks.landmark]
             y_coords = [lm.y for lm in face_landmarks.landmark]
             
@@ -57,6 +59,7 @@ def process_image(img_path, blur_threshold, face_mesh):
             x2 = min(w, x_max + pad_x)
             y2 = min(h, y_max + pad_y)
             
+            fm = 0
             face_roi = gray[y1:y2, x1:x2]
             if face_roi.size > 0:
                 fm = cv2.Laplacian(face_roi, cv2.CV_64F).var()
@@ -72,27 +75,56 @@ def process_image(img_path, blur_threshold, face_mesh):
             right_EAR = calculate_ear(right_eye_pts)
             avg_EAR = (left_EAR + right_EAR) / 2.0
             
-            # Lowered from 0.20 to 0.15 to avoid incorrectly rejecting smiling faces
-            if avg_EAR < 0.15:
+            # Adjusted to 0.20 for stricter detection of closed/sleepy eyes
+            is_blink = avg_EAR < 0.20
+            if is_blink:
                 closed_eyes_detected = True
+                
+            is_blur_face = fm < blur_threshold
+            
+            # 3. Extract and encode face crop to base64
+            b64_str = ""
+            color_roi = img[y1:y2, x1:x2]
+            if color_roi.size > 0:
+                h_roi, w_roi = color_roi.shape[:2]
+                max_dim = 300
+                if h_roi > max_dim or w_roi > max_dim:
+                    scale = max_dim / max(h_roi, w_roi)
+                    color_roi = cv2.resize(color_roi, (int(w_roi * scale), int(h_roi * scale)))
+                
+                _, buffer = cv2.imencode('.jpg', color_roi, [int(cv2.IMWRITE_JPEG_QUALITY), 65])
+                b64_str = base64.b64encode(buffer).decode('utf-8')
+                
+            response_faces.append({
+                "image_b64": f"data:image/jpeg;base64,{b64_str}",
+                "ear": avg_EAR,
+                "laplacian": fm,
+                "is_blink": is_blink,
+                "is_blur": is_blur_face
+            })
 
         max_fm = max(face_fms) if face_fms else 0
         
+        keep = True
         if not faces_clear and face_fms:
-            return {"keep": False, "reason": f"人物面部未对焦或模糊 (人脸方差: {max_fm:.0f} < {blur_threshold})"}
+            keep = False
+            reason = f"人物面部未对焦或模糊 (人脸方差: {max_fm:.0f} < {blur_threshold})"
+        elif closed_eyes_detected:
+            keep = False
+            reason = "检测到人物闭眼 (请检查是否包含闭眼者)"
+        else:
+            reason = f"人物对焦清晰且未闭眼 (人脸方差: {max_fm:.0f})"
             
-        if closed_eyes_detected:
-            return {"keep": False, "reason": f"检测到人物闭眼 (请检查是否包含闭眼者)"}
-            
-        return {"keep": True, "reason": f"人物对焦清晰且未闭眼 (人脸方差: {max_fm:.0f})"}
+        return {"keep": keep, "reason": reason, "faces": response_faces}
     
     else:
-        # Fallback to whole image blur detection if no faces are found (Scenery, objects)
+        # Fallback to whole image blur detection if no faces are found
         fm = cv2.Laplacian(gray, cv2.CV_64F).var()
-        if fm < blur_threshold:
-            return {"keep": False, "reason": f"无人物且全局画面模糊 (全局方差: {fm:.0f} < {blur_threshold})"}
+        keep = fm >= blur_threshold
+        if not keep:
+            return {"keep": False, "reason": f"无人物且全局画面模糊 (全局方差: {fm:.0f} < {blur_threshold})", "faces": []}
             
-        return {"keep": True, "reason": f"未检测到人脸，全局清晰 (方差: {fm:.0f})"}
+        return {"keep": True, "reason": f"未检测到人脸，全局清晰 (方差: {fm:.0f})", "faces": []}
 
 def main():
     # Signal that Python is ready by printing a known keyword if needed (Electron can wait for it)

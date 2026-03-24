@@ -379,7 +379,7 @@ ipcMain.handle('scan:files', async (event, targetPath, formatFilter) => {
 
 let activeProcessAbort = null;
 
-ipcMain.on('process:start', async (event, targetPath, blurThreshold, formatFilter = 'all') => {
+ipcMain.on('process:start', async (event, targetPath, blurThreshold, formatFilter = 'all', aiConfig = { enabled: false }) => {
     if (!targetPath || !fs.existsSync(targetPath)) {
         event.sender.send('process:update', { type: 'error', message: '提供的路径不存在或为空' });
         return;
@@ -482,111 +482,206 @@ ipcMain.on('process:start', async (event, targetPath, blurThreshold, formatFilte
     }
 
     // ---- Run analyzer ----
-    if (!analyzerExecutable) {
-        // No analyzer available — just pass all through as "keep" (Phase 1 fallback)
+    if (aiConfig && aiConfig.enabled) {
+        // --- Phase 2: AI Vision API Processing ---
+        console.log(`[Analyzer] Using AI Vision API (${aiConfig.model})`);
+
         for (let i = 0; i < files.length; i++) {
-            if (aborted) break;
+            if (aborted) {
+                event.sender.send('process:update', { type: 'cancelled' });
+                activeProcessAbort = null;
+                return;
+            }
+
             const file = files[i];
+            const analysisPath = previewMap.get(file) || path.join(targetPath, file);
+            let keep = false;
+            let reason = 'AI分析超时或失败';
+            let tags = [];
+            let score = 0;
+
+            try {
+                // Ensure image exists
+                if (!fs.existsSync(analysisPath) || fs.statSync(analysisPath).size === 0) {
+                    throw new Error("预览图提取失败或文件为空");
+                }
+
+                const base64Image = fs.readFileSync(analysisPath).toString('base64');
+
+                // Call LLM
+                const response = await net.fetch(`${aiConfig.apiUrl}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${aiConfig.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: aiConfig.model,
+                        messages: [
+                            {
+                                role: "user",
+                                content: [
+                                    { type: "text", text: aiConfig.prompt },
+                                    { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+                                ]
+                            }
+                        ],
+                        response_format: { type: "json_object" },
+                        temperature: 0.2
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 错误: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                let resultText = data.choices[0].message.content;
+                resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+
+                const aiResult = JSON.parse(resultText);
+                keep = aiResult.keep === true;
+                reason = aiResult.reason || 'AI 判定完成';
+                tags = Array.isArray(aiResult.tags) ? aiResult.tags : [];
+                score = typeof aiResult.score === 'number' ? aiResult.score : (keep ? 80 : 20);
+
+                console.log(`[AI] ${file}: keep=${keep}, score=${score}, tags=[${tags.join(',')}]`);
+
+            } catch (err) {
+                console.error(`[AI] Failed for ${file}:`, err.message);
+                reason = `AI API 错误: ${err.message}`;
+            }
+
             event.sender.send('process:update', {
                 type: 'progress',
                 current: i + 1,
                 fileName: file,
-                keep: true,
-                reason: '分析器未就绪，默认保留',
+                keep,
+                reason,
+                tags,
+                score,
+                faces: [],
                 originalPath: path.join(targetPath, file),
                 previewPath: previewMap.get(file) || null,
             });
         }
+
         event.sender.send('process:update', { type: 'done' });
         activeProcessAbort = null;
         return;
-    }
 
-    const child = spawn(analyzerExecutable, processArgs);
-    let current = 0;
-    let stdoutBuffer = '';
-
-    function processNext() {
-        if (aborted) {
-            try { child.stdin.write("exit\n"); } catch (e) { }
-            event.sender.send('process:update', { type: 'cancelled' });
-            return;
-        }
-        if (current >= total) {
-            try { child.stdin.write("exit\n"); } catch (e) { }
+    } else {
+        // --- Phase 1: Local Python Processing ---
+        if (!analyzerExecutable) {
+            // No analyzer available — just pass all through as "keep" (Phase 1 fallback)
+            for (let i = 0; i < files.length; i++) {
+                if (aborted) break;
+                const file = files[i];
+                event.sender.send('process:update', {
+                    type: 'progress',
+                    current: i + 1,
+                    fileName: file,
+                    keep: true,
+                    reason: '分析器未就绪，默认保留',
+                    faces: [],
+                    originalPath: path.join(targetPath, file),
+                    previewPath: previewMap.get(file) || null,
+                });
+            }
             event.sender.send('process:update', { type: 'done' });
             activeProcessAbort = null;
             return;
         }
 
-        const file = files[current];
-        // Use preview image for analysis if available (RAW files)
-        const analysisPath = previewMap.get(file) || path.join(targetPath, file);
-        const payload = JSON.stringify({ file: analysisPath, threshold: blurThreshold });
-        child.stdin.write(payload + "\n");
-    }
+        const child = spawn(analyzerExecutable, processArgs);
+        let current = 0;
+        let stdoutBuffer = '';
 
-    child.stdout.on('data', (data) => {
-        stdoutBuffer += data.toString();
-        const lines = stdoutBuffer.split('\n');
-        stdoutBuffer = lines.pop();
-
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) continue;
-
-            if (trimmed === 'READY') {
-                processNext();
-                continue;
+        function processNext() {
+            if (aborted) {
+                try { child.stdin.write("exit\n"); } catch (e) { }
+                event.sender.send('process:update', { type: 'cancelled' });
+                return;
+            }
+            if (current >= total) {
+                try { child.stdin.write("exit\n"); } catch (e) { }
+                event.sender.send('process:update', { type: 'done' });
+                activeProcessAbort = null;
+                return;
             }
 
             const file = files[current];
-            const filePath = path.join(targetPath, file);
-            let keep = false;
-            let reason = '';
+            // Use preview image for analysis if available (RAW files)
+            const analysisPath = previewMap.get(file) || path.join(targetPath, file);
+            const payload = JSON.stringify({ file: analysisPath, threshold: blurThreshold });
+            child.stdin.write(payload + "\n");
+        }
 
-            try {
-                const result = JSON.parse(trimmed);
-                keep = result.keep === true;
-                reason = result.reason || '';
-            } catch (err) {
-                keep = false;
-                reason = '分析器输出异常或解析失败';
+        child.stdout.on('data', (data) => {
+            stdoutBuffer += data.toString();
+            const lines = stdoutBuffer.split('\n');
+            stdoutBuffer = lines.pop();
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+
+                if (trimmed === 'READY') {
+                    processNext();
+                    continue;
+                }
+
+                const file = files[current];
+                const filePath = path.join(targetPath, file);
+                let keep = false;
+                let reason = '';
+                let faces = [];
+
+                try {
+                    const result = JSON.parse(trimmed);
+                    keep = result.keep === true;
+                    reason = result.reason || '';
+                    faces = result.faces || [];
+                } catch (err) {
+                    keep = false;
+                    reason = '分析器输出异常或解析失败';
+                }
+
+                current++;
+
+                event.sender.send('process:update', {
+                    type: 'progress',
+                    current,
+                    fileName: file,
+                    keep,
+                    reason,
+                    faces,
+                    originalPath: filePath,
+                    previewPath: previewMap.get(file) || null,
+                });
+
+                processNext();
             }
+        });
 
-            current++;
+        child.stderr.on('data', (data) => {
+            console.error('ANALYZER ERROR:', data.toString());
+        });
 
-            event.sender.send('process:update', {
-                type: 'progress',
-                current,
-                fileName: file,
-                keep,
-                reason,
-                originalPath: filePath,
-                previewPath: previewMap.get(file) || null,
-            });
+        child.on('error', (err) => {
+            console.error('Failed to start analyzer:', err);
+            event.sender.send('process:update', { type: 'error', message: '无法启动分析引擎' });
+        });
 
-            processNext();
-        }
-    });
-
-    child.stderr.on('data', (data) => {
-        console.error('ANALYZER ERROR:', data.toString());
-    });
-
-    child.on('error', (err) => {
-        console.error('Failed to start analyzer:', err);
-        event.sender.send('process:update', { type: 'error', message: '无法启动分析引擎' });
-    });
-
-    child.on('close', (code) => {
-        if (current < total && !aborted) {
-            event.sender.send('process:update', {
-                type: 'error',
-                message: `分析引擎异常退出 (代码 ${code})`
-            });
-        }
-    });
+        child.on('close', (code) => {
+            if (current < total && !aborted) {
+                event.sender.send('process:update', {
+                    type: 'error',
+                    message: `分析引擎异常退出 (代码 ${code})`
+                });
+            }
+        });
+    }
 });
 
 // IPC: Cancel Processing
@@ -662,7 +757,13 @@ ipcMain.handle('action:createXmp', async (event, sourcePath, results, overwrite)
             if (!xmpPath.startsWith(sourcePath)) continue;
             if (!overwrite && fs.existsSync(xmpPath)) continue;
 
-            const rating = res.keep ? 3 : 1;
+            // Ensure rating logic is sound and use custom score if provided by AI
+            let rating = res.keep ? 3 : 1;
+            if (typeof res.score === 'number') {
+                // Map 0-100 score to 1-5 rating (e.g. 0-20=1, 21-40=2, 41-60=3, 61-80=4, 81-100=5)
+                rating = Math.max(1, Math.min(5, Math.ceil(res.score / 20)));
+            }
+
             const colorLabel = res.keep ? 'Green' : 'Red';
             const statusTag = res.keep ? '快选片_保留' : '快选片_淘汰';
 

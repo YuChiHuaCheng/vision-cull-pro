@@ -127,8 +127,12 @@ export default function MasonryGallery({ photos, folderPath, isComplete, scanRes
             }
             if (e.key === 'ArrowLeft') { e.preventDefault(); setSelectedIndex(p => Math.max(0, p - 1)); return; }
             if (e.key === 'ArrowRight') { e.preventDefault(); setSelectedIndex(p => Math.min(filteredPhotos.length - 1, p + 1)); return; }
-            if (e.key === ' ') { e.preventDefault(); if (selectedIndex >= 0) setLightboxIndex(selectedIndex); return; }
             const photo = filteredPhotos[selectedIndex];
+            if (e.key === ' ') { 
+                e.preventDefault(); 
+                if (photo) toggleVerdict(photo);
+                return; 
+            }
             if (photo) {
                 if (e.key === 'p' || e.key === 'P') { setVerdictForPhoto(photo, 'keep'); return; }
                 if (e.key === 'x' || e.key === 'X') { setVerdictForPhoto(photo, 'reject'); return; }
@@ -265,6 +269,25 @@ export default function MasonryGallery({ photos, folderPath, isComplete, scanRes
         );
     };
 
+    const bestFaces = useMemo(() => {
+        const bestIds = new Set();
+        scanResults.forEach(r => {
+            if(!r.faces || r.faces.length === 0) return;
+            let bestIdx = -1;
+            let maxScore = -1;
+            r.faces.forEach((f, idx) => {
+                if(!f.is_blink && f.laplacian > maxScore) {
+                    maxScore = f.laplacian;
+                    bestIdx = idx;
+                }
+            });
+            if(bestIdx >= 0) {
+                bestIds.add(`${r.fileName}_${bestIdx}`);
+            }
+        });
+        return bestIds;
+    }, [scanResults]);
+
     // ---- Empty State ----
     if (!photos.length && !isComplete) {
         return (
@@ -281,12 +304,12 @@ export default function MasonryGallery({ photos, folderPath, isComplete, scanRes
     }
 
     return (
-        <div className="flex flex-col h-full bg-base">
+        <div className="flex flex-col h-full bg-base transition-colors duration-300">
             {/* Toolbar */}
-            <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-base flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-3 border-b border-border bg-panel/80 backdrop-blur-md z-20 flex-shrink-0 transition-colors duration-300">
                 <div className="flex items-center gap-2">
                     {TABS.map(tab => (
-                        <button key={tab.key} className={`filter-tab ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}>
+                        <button key={tab.key} className={`filter-tab ${activeTab === tab.key ? 'active shadow-[0_4px_12px_rgba(var(--color-accent),0.2)] bg-surface' : ''}`} onClick={() => setActiveTab(tab.key)}>
                             {tab.label}
                             {tab.key === 'keep' && <span className="ml-2 text-status-keep">[{stats.keep}]</span>}
                             {tab.key === 'reject' && <span className="ml-2 text-status-reject">[{stats.reject}]</span>}
@@ -309,40 +332,72 @@ export default function MasonryGallery({ photos, folderPath, isComplete, scanRes
             </div>
 
             {/* Photo Grid */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 xl:p-6 bg-base">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 xl:p-6 bg-base relative pb-24 transition-colors duration-300">
                 {filteredPhotos.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8 gap-1">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
                         {filteredPhotos.map((photoName, index) => {
                             const verdict = getVerdict(photoName);
                             const isSelected = index === selectedIndex;
+                            const result = scanResults.find(r => r.fileName === photoName);
+                            const faces = result?.faces || [];
 
                             return (
                                 <div
                                     key={photoName}
-                                    className={`photo-card group aspect-square ${isSelected ? 'selected' : ''}`}
+                                    className={`photo-card group aspect-[3/4] flex flex-col ${isSelected ? 'selected ring-2 ring-accent shadow-[0_0_20px_var(--color-accent-dim)]' : ''}`}
                                     onClick={(e) => handleCardClick(index, e)}
+                                    title="Double click to expand / Space to toggle"
+                                    onDoubleClick={() => setLightboxIndex(index)}
                                 >
-                                    <LazyImage src={getImageSrc(photoName, index)} alt={photoName} />
+                                    <div className="flex-1 relative overflow-hidden bg-panel flex items-center justify-center transition-colors duration-300">
+                                        <LazyImage src={getImageSrc(photoName, index)} alt={photoName} />
+                                        
+                                        {/* Status Badge */}
+                                        <button
+                                            className={`status-badge ${verdict}`}
+                                            onClick={(e) => { e.stopPropagation(); toggleVerdict(photoName); }}
+                                            title={verdict === 'keep' ? 'KEEP' : verdict === 'reject' ? 'REJECT' : 'FAIL'}
+                                        >
+                                            {verdict === 'keep' ? 'K' : verdict === 'reject' ? 'R' : '!'}
+                                        </button>
 
-                                    {/* Status Badge */}
-                                    <button
-                                        className={`status-badge ${verdict}`}
-                                        onClick={(e) => { e.stopPropagation(); toggleVerdict(photoName); }}
-                                        title={verdict === 'keep' ? 'KEEP' : verdict === 'reject' ? 'REJECT' : 'FAIL'}
-                                    >
-                                        {verdict === 'keep' ? 'K' : verdict === 'reject' ? 'R' : '!'}
-                                    </button>
+                                        {/* Override indicator */}
+                                        {overrides[photoName] && (
+                                            <div className="absolute top-0 left-0 border-t-[20px] border-r-[20px] border-t-accent border-r-transparent shadow-glow-accent z-20"></div>
+                                        )}
+                                        
+                                        <div className="absolute inset-0 bg-base/5 group-hover:bg-transparent pointer-events-none transition-colors duration-300"></div>
+                                    </div>
+                                    
+                                    {/* Filmstrip Face Drawer */}
+                                    <div className="h-14 bg-surface border-t border-border flex items-center px-2 gap-2 overflow-x-auto cs-scroll flex-shrink-0 relative">
+                                        {faces.map((f, fi) => (
+                                            <div key={fi} className="relative group/face flex-shrink-0">
+                                                <img 
+                                                    src={f.image_b64} 
+                                                    className={`w-10 h-10 object-cover rounded shadow-sm face-crop border ${f.is_blink ? 'border-status-reject/50 opacity-80' : 'border-white/10'}`} 
+                                                    alt="face" 
+                                                />
+                                                {/* Metric Overlays (D) */}
+                                                <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[9px] font-mono px-1.5 py-0.5 rounded opacity-0 group-hover/face:opacity-100 whitespace-nowrap z-[110] shadow-xl pointer-events-none transform -translate-y-2 group-hover/face:translate-y-0 transition-all duration-200">
+                                                    {f.laplacian.toFixed(1)} L | {f.ear.toFixed(2)} E
+                                                </div>
+                                                {/* Magic Star (A) */}
+                                                {bestFaces.has(`${photoName}_${fi}`) && (
+                                                    <div className="absolute -top-2 -right-2 text-[14px] filter drop-shadow-[0_0_8px_rgba(74,222,128,0.8)] z-30 pointer-events-none">⭐</div>
+                                                )}
+                                                {f.is_blink && (
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded text-status-reject text-xs font-bold font-mono pointer-events-none z-20">
+                                                        X
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
 
-                                    {/* Override indicator */}
-                                    {overrides[photoName] && (
-                                        <div className="absolute top-0 left-0 border-t-[20px] border-r-[20px] border-t-accent border-r-transparent shadow-glow-accent z-20"></div>
-                                    )}
-
-                                    {/* Subdued overlay until hover on general state */}
-                                    <div className="absolute inset-0 bg-base/10 group-hover:bg-transparent pointer-events-none transition-colors duration-300"></div>
-
-                                    <div className="absolute inset-x-0 bottom-0 px-3 py-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col pointer-events-none">
-                                        <span className="text-xs font-medium text-white/90 truncate">{photoName}</span>
+                                    {/* Footer Name label */}
+                                    <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/60 rounded text-[10px] text-white/80 max-w-[70%] truncate pointer-events-none group-hover:opacity-100 opacity-0 transition-opacity">
+                                        {photoName}
                                     </div>
                                 </div>
                             );
@@ -355,38 +410,36 @@ export default function MasonryGallery({ photos, folderPath, isComplete, scanRes
                 )}
             </div>
 
-            {/* Export Bar */}
+            {/* Export Bar (E) */}
             {isComplete && photos.length > 0 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-surface flex-shrink-0">
+                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 shadow-soft-md z-40 bg-panel/95 backdrop-blur-xl rounded-full border border-border px-6 py-3 flex items-center justify-between gap-8 flex-shrink-0 animate-slide-up transition-colors duration-300">
                     <div className="flex items-center gap-4">
-                        <span className="text-sm font-medium text-text-primary">
-                            处理完成
+                        <span className="text-sm font-semibold tracking-wide text-text-primary">
+                            ✓ 审查模式完毕
                         </span>
-                        {exportMsg && <span className="text-xs font-medium text-text-secondary bg-base px-2 py-1 rounded-md border border-border animate-fade-in">{exportMsg}</span>}
+                        {exportMsg && <span className="text-xs font-medium text-text-muted bg-surface px-3 py-1.5 rounded border border-border animate-fade-in">{exportMsg}</span>}
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button className="btn-secondary" onClick={handleCopy} disabled={exportBusy}>
-                            导出照片
-                        </button>
-                        <button className="btn-success" onClick={handleXmpCheck} disabled={exportBusy}>
-                            生成 XMP
+                        <button className="px-6 py-2 bg-text-primary text-base hover:bg-text-secondary text-xs font-bold uppercase tracking-widest rounded-full transition-colors shadow-soft-sm" onClick={handleCopy} disabled={exportBusy}>
+                            批量导出保留组
                         </button>
                     </div>
                 </div>
             )}
 
             {/* Terminal Status Bar */}
-            <div className="terminal-bar flex-shrink-0">
-                <div className="terminal-stat"><div className="dot bg-status-keep" /><span>KEEP:{stats.keep}</span></div>
-                <div className="terminal-stat"><div className="dot bg-status-reject" /><span>REJECT:{stats.reject}</span></div>
-                {stats.failed > 0 && <div className="terminal-stat"><div className="dot bg-status-fail" /><span>FAIL:{stats.failed}</span></div>}
-                {stats.modified > 0 && <div className="terminal-stat"><div className="dot bg-accent" /><span>MODIFIED:{stats.modified}</span></div>}
+            <div className="terminal-bar flex-shrink-0 border-t border-border bg-panel transition-colors duration-300">
+                <div className="terminal-stat"><div className="dot bg-status-keep shadow-[0_0_8px_var(--status-keep-dim)]" /><span>KEEP:{stats.keep}</span></div>
+                <div className="terminal-stat"><div className="dot bg-status-reject shadow-[0_0_8px_var(--status-reject-dim)]" /><span>REJECT:{stats.reject}</span></div>
+                {stats.failed > 0 && <div className="terminal-stat"><div className="dot bg-status-fail shadow-[0_0_8px_var(--status-fail-dim)]" /><span>FAIL:{stats.failed}</span></div>}
+                {stats.modified > 0 && <div className="terminal-stat"><div className="dot bg-accent" /><span className="text-accent">MODIFIED:{stats.modified}</span></div>}
                 <div className="flex-1" />
-                <div className="flex items-center gap-3 text-[10px] text-text-muted">
-                    <span className="flex items-center gap-1"><kbd>P</kbd> KEEP</span>
-                    <span className="flex items-center gap-1"><kbd>X</kbd> REJECT</span>
-                    <span className="flex items-center gap-1"><kbd>SPACE</kbd> INSPECT</span>
+                <div className="flex items-center gap-4 text-[9px] text-text-muted/60 font-mono tracking-widest uppercase">
+                    <span className="flex items-center gap-1.5"><kbd className="!bg-surface !border-border text-text-secondary">P</kbd> 保留</span>
+                    <span className="flex items-center gap-1.5"><kbd className="!bg-surface !border-border text-text-secondary">X</kbd> 淘汰</span>
+                    <span className="flex items-center gap-1.5"><kbd className="!bg-surface !border-border text-text-secondary">SPACE</kbd> 切换</span>
+                    <span className="flex items-center gap-1.5"><kbd className="!bg-surface !border-border text-text-secondary">DBL-CLK</kbd> 放大</span>
                 </div>
             </div>
 

@@ -5,13 +5,58 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-base: 248 250 252;
+    --color-panel: 255 255 255;
+    --color-surface: 241 245 249;
+    --color-border: 226 232 240;
+    --color-border-hover: 203 213 225;
+    
+    --text-primary: 15 23 42;
+    --text-secondary: 71 85 105;
+    --text-muted: 148 163 184;
+
+    --status-keep: 5 150 105;
+    --status-keep-dim: 5 150 105; /* Use with /15 opacity */
+    --status-reject: 225 29 72;
+    --status-reject-dim: 225 29 72; /* Use with /15 opacity */
+    --status-fail: 217 119 6;
+    --status-fail-dim: 217 119 6; /* Use with /15 opacity */
+
+    --color-accent: 37 99 235;
+    --color-accent-dim: 37 99 235; /* Use with /15 opacity */
+  }
+
+  .dark {
+    --color-base: 0 0 0;
+    --color-panel: 15 15 18;
+    --color-surface: 24 24 27;
+    --color-border: 39 39 42;
+    --color-border-hover: 63 63 70;
+    
+    --text-primary: 237 237 237;
+    --text-secondary: 161 161 170;
+    --text-muted: 82 82 91;
+
+    --status-keep: 16 185 129;
+    --status-keep-dim: 16 185 129;
+    --status-reject: 244 63 94;
+    --status-reject-dim: 244 63 94;
+    --status-fail: 245 158 11;
+    --status-fail-dim: 245 158 11;
+
+    --color-accent: 59 130 246;
+    --color-accent-dim: 59 130 246;
+  }
+
   body {
-    background-color: theme('colors.base');
-    color: theme('colors.text-primary');
+    background-color: rgb(var(--color-base));
+    color: rgb(var(--text-primary));
     font-family: theme('fontFamily.sans');
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   ::selection {
@@ -158,9 +203,52 @@
   .log-line {
     @apply font-mono text-[11px] leading-relaxed break-all border-b border-border/50 pb-1.5;
   }
+
+  /* ---- Face Crops (Filmstrip B) ---- */
+  .face-crop {
+    @apply transition-transform duration-200 z-20 cursor-crosshair box-border relative;
+    transform-origin: center bottom;
+  }
+  .face-crop:hover {
+    @apply transform scale-[3.5] z-[100] shadow-[0_0_30px_rgba(0,0,0,0.8)] rounded-sm ring-1 ring-white;
+  }
 }
 
 /* ---- Generic Elements ---- */
 kbd {
   @apply inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[10px] font-sans font-medium bg-surface border border-border text-text-secondary rounded uppercase;
+}
+
+/* ---- Sleek UI Adjustments ---- */
+.cs-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.cs-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cs-scroll::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-border-hover));
+  border-radius: 4px;
+}
+
+.cs-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--text-muted));
+}
+
+.slider-sleek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: theme('colors.accent');
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(var(--color-accent), 0.5);
+  transition: transform 0.15s ease-in-out;
+}
+
+.slider-sleek::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
 }

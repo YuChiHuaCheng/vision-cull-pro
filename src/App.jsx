@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ConfigPanel from './components/ConfigPanel';
 import ProgressMonitor from './components/ProgressMonitor';
 import MasonryGallery from './components/MasonryGallery';
@@ -13,6 +13,22 @@ export default function App() {
     const [statusMessage, setStatusMessage] = useState('等待执行指令...');
     const [validPhotos, setValidPhotos] = useState([]);
     const [scanResults, setScanResults] = useState([]);
+    const [isLogOpen, setIsLogOpen] = useState(false);
+
+    // Theme Management
+    const [theme, setTheme] = useState('dark');
+
+    useEffect(() => {
+        if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    }, [theme]);
+
+    const toggleTheme = () => {
+        setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    };
 
     React.useEffect(() => {
         if (!Bridge.isElectron()) return;
@@ -48,7 +64,14 @@ export default function App() {
         return () => Bridge.removeProcessUpdateListeners();
     }, []);
 
-    const handleStartScan = (path, threshold, formatFilter) => {
+    // Auto-open logs when scanning starts
+    useEffect(() => {
+        if (isScanning) {
+            setIsLogOpen(true);
+        }
+    }, [isScanning]);
+
+    const handleStartScan = (path, threshold, formatFilter, aiConfig) => {
         setIsScanning(true);
         setFolderPath(path);
         setStatusMessage('正在初始化...');
@@ -57,7 +80,7 @@ export default function App() {
         setProgressCurrent(0);
 
         // Call bridge
-        Bridge.startProcess(path, threshold, formatFilter);
+        Bridge.startProcess(path, threshold, formatFilter, aiConfig);
 
         // Mock progress for web dev mode
         if (!Bridge.isElectron()) {
@@ -78,11 +101,17 @@ export default function App() {
                 const keep = Math.random() > 0.3;
                 setStatusMessage(`分析: ${fileName}`);
                 setValidPhotos(prev => [...prev, fileName]);
+                const fakeFace1 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmNzc3NyIvPjwvc3ZnPg==';
+                const fakeFace2 = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzc3NzdmZiIvPjwvc3ZnPg==';
                 setScanResults(prev => [...prev, {
                     fileName,
                     keep,
                     reason: keep ? '清晰度达标' : '画面模糊',
                     tags: keep ? ['mock_tag'] : [],
+                    faces: [
+                        { image_b64: fakeFace1, laplacian: Math.random() * 200, ear: 0.31, is_blink: false },
+                        { image_b64: fakeFace2, laplacian: Math.random() * 200, ear: 0.28, is_blink: false }
+                    ]
                 }]);
             }, 80);
         }
@@ -97,38 +126,43 @@ export default function App() {
     const isComplete = progressCurrent === progressTotal && progressTotal > 0 && !isScanning;
 
     return (
-        <div className="h-screen bg-base text-text-primary flex flex-col overflow-hidden">
-            <Header />
+        <div className="h-screen bg-base text-text-primary flex flex-col overflow-hidden transition-colors duration-300">
+            <Header theme={theme} toggleTheme={toggleTheme} />
 
             <main className="flex-1 flex overflow-hidden">
-                {/* Left: Config Panel */}
-                <div className="w-[300px] panel p-5">
-                    <ConfigPanel
-                        onStart={handleStartScan}
-                        disabled={isScanning}
-                    />
+                {/* Left: Unified Sidebar */}
+                <div className="w-[340px] flex flex-col border-r border-border bg-base z-20 shadow-2xl relative overflow-hidden">
+                    {/* Top: Config Panel */}
+                    <div className="flex-1 relative flex flex-col overflow-hidden p-5">
+                        <ConfigPanel
+                            onStart={handleStartScan}
+                            disabled={isScanning}
+                        />
 
-                    {/* Cancel button during scan */}
-                    {isScanning && (
-                        <div className="mt-8 border-t border-white/5 pt-4">
-                            <button
-                                className="btn-danger w-full text-xs"
-                                onClick={handleCancel}
-                            >
-                                HALT PROCESS
-                            </button>
-                        </div>
-                    )}
-                </div>
+                        {/* Cancel button during scan */}
+                        {isScanning && (
+                            <div className="mt-4 pt-4 border-t border-border flex-shrink-0">
+                                <button
+                                    className="w-full py-3 rounded-lg border border-status-reject/30 text-status-reject text-xs font-bold tracking-widest uppercase hover:bg-status-reject/10 transition-colors"
+                                    onClick={handleCancel}
+                                >
+                                    HALT PROCESS
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
-                {/* Middle: Progress Logs */}
-                <div className="w-[340px] panel flex flex-col">
-                    <ProgressMonitor
-                        isScanning={isScanning}
-                        progressTotal={progressTotal}
-                        progressCurrent={progressCurrent}
-                        statusMessage={statusMessage}
-                    />
+                    {/* Bottom: Progress Logs */}
+                    <div className={`${isLogOpen ? 'h-[250px]' : 'h-[45px]'} border-t border-border bg-surface flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out`}>
+                        <ProgressMonitor
+                            isScanning={isScanning}
+                            progressTotal={progressTotal}
+                            progressCurrent={progressCurrent}
+                            statusMessage={statusMessage}
+                            isLogOpen={isLogOpen}
+                            toggleLog={() => setIsLogOpen(!isLogOpen)}
+                        />
+                    </div>
                 </div>
 
                 {/* Right: Gallery */}

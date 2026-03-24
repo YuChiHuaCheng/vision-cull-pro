@@ -5,8 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     scanFiles: (path, formatFilter) => ipcRenderer.invoke('scan:files', path, formatFilter),
 
-    startProcess: (path, blurThreshold, formatFilter) =>
-        ipcRenderer.send('process:start', path, blurThreshold, formatFilter),
+    startProcess: (path, blurThreshold, formatFilter, aiConfig) =>
+        ipcRenderer.send('process:start', path, blurThreshold, formatFilter, aiConfig),
 
     cancelProcess: () => ipcRenderer.send('process:cancel'),
 

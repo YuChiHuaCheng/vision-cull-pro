@@ -1,6 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-export default function ProgressMonitor({ isScanning, progressTotal, progressCurrent, statusMessage }) {
+export default function ProgressMonitor({ 
+    isScanning, 
+    progressTotal, 
+    progressCurrent, 
+    statusMessage,
+    isLogOpen,
+    toggleLog 
+}) {
     const logsContainerRef = useRef(null);
     const [logs, setLogs] = useState([]);
 
@@ -37,23 +44,35 @@ export default function ProgressMonitor({ isScanning, progressTotal, progressCur
     const isActive = isScanning || progressTotal > 0;
 
     return (
-        <div className="flex flex-col h-full bg-base border-l border-border relative">
+        <div className="flex flex-col h-full bg-transparent relative">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-panel flex-shrink-0 z-10">
+            <div 
+                className="flex items-center justify-between px-4 py-3 border-b border-border bg-transparent flex-shrink-0 z-10 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                onClick={toggleLog}
+            >
                 <div className="flex items-center gap-2">
-                    <h2 className="text-xs font-semibold text-text-primary tracking-wide">
-                        处理日志
+                    <h2 className="text-[10px] font-bold text-text-secondary tracking-[0.2em] uppercase">
+                        分析日志
                     </h2>
-                    {isScanning && <div className="w-2 h-2 bg-accent animate-pulse rounded-full"></div>}
+                    {isScanning && <div className="w-1.5 h-1.5 bg-accent animate-pulse rounded-full shadow-[0_0_8px_rgba(var(--color-accent),0.6)]"></div>}
                 </div>
-                {isActive && (
-                    <span className="text-xs font-medium text-text-secondary">
-                        {progressCurrent}/{progressTotal}
-                    </span>
-                )}
+                <div className="flex items-center gap-4">
+                    {isActive && (
+                        <span className="text-[10px] font-medium text-text-secondary bg-surface px-2 border border-border rounded">
+                            {progressCurrent}/{progressTotal}
+                        </span>
+                    )}
+                    {/* Toggle Caret */}
+                    <svg className={`w-4 h-4 text-text-muted transition-transform duration-300 ${isLogOpen ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
             </div>
 
-            {/* Progress Bar (Sticky Top) */}
+            {/* Conditionally reveal body */}
+            {isLogOpen && (
+                <>
+                    {/* Progress Bar (Sticky Top) */}
             {isActive && (
                 <div className="absolute top-[45px] left-0 right-0 z-10">
                     <div className="progress-bar rounded-none">
@@ -87,6 +106,8 @@ export default function ProgressMonitor({ isScanning, progressTotal, progressCur
                     )}
                 </ul>
             </div>
+                </>
+            )}
         </div>
     );
 }

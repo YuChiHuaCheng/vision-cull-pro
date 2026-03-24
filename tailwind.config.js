@@ -8,29 +8,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Softer UI Dark Mode Palette
-        base: '#1e1e24',       // softer dark background
-        panel: '#25252b',      // elevated panel
-        surface: '#2d2d34',    // distinct card surface
-        border: '#3b3b44',     // softer separators
-        'border-hover': '#52525e',
-
-        // Standard text hierarchy
-        'text-primary': '#f4f4f5',
-        'text-secondary': '#a1a1aa',
-        'text-muted': '#71717a',
-
-        // Softer status colors
-        'status-keep': '#34d399',       // soft emerald
-        'status-keep-dim': 'rgba(52, 211, 153, 0.15)',
-        'status-reject': '#fb7185',     // soft rose
-        'status-reject-dim': 'rgba(251, 113, 133, 0.15)',
-        'status-fail': '#fbbf24',       // amber
-        'status-fail-dim': 'rgba(251, 191, 36, 0.15)',
-
-        // Action accent
-        accent: '#60a5fa',              // friendly blue tone
-        'accent-dim': 'rgba(96, 165, 250, 0.15)',
+        // Theme variables mapping with alpha-value support
+        base: 'rgb(var(--color-base) / <alpha-value>)',
+        panel: 'rgb(var(--color-panel) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        border: 'rgb(var(--color-border) / <alpha-value>)',
+        'border-hover': 'rgb(var(--color-border-hover) / <alpha-value>)',
+        text: {
+          primary: 'rgb(var(--text-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--text-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--text-muted) / <alpha-value>)',
+        },
+        status: {
+          keep: 'rgb(var(--status-keep) / <alpha-value>)',
+          'keep-dim': 'rgb(var(--status-keep-dim) / 0.15)',
+          reject: 'rgb(var(--status-reject) / <alpha-value>)',
+          'reject-dim': 'rgb(var(--status-reject-dim) / 0.15)',
+          fail: 'rgb(var(--status-fail) / <alpha-value>)',
+          'fail-dim': 'rgb(var(--status-fail-dim) / 0.15)',
+        },
+        accent: 'rgb(var(--color-accent) / <alpha-value>)',
+        'accent-dim': 'rgb(var(--color-accent-dim) / 0.15)',
       },
       fontFamily: {
         sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
